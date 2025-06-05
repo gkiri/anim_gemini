@@ -1,0 +1,4 @@
+manim
+openai
+python-dotenv
+ffmpeg-python 
