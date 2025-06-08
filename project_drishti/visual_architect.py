@@ -28,6 +28,49 @@ from project_drishti import config
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+# Boilerplate code to be prepended to every LLM-generated Manim script
+# This ensures helper functions are always defined.
+MANIM_SCRIPT_BOILERPLATE = """
+import numpy as np
+import logging
+
+# Logger for helper functions - assumes main script (or Manim) sets up basicConfig
+logger = logging.getLogger(__name__)
+
+# --- Helper Function: stack_mobjects_vertically ---
+# Stacks a list of Mobjects vertically.
+# `center_point=None` means the group's final position is determined purely by arrange,
+# otherwise, it's moved to the specified center_point after arrangement.
+def stack_mobjects_vertically(mobjects_list, center_point=None, buff=0.5):
+    # Ensure VGroup, DOWN, ORIGIN are available from 'from manim import *'
+    # Ensure np is imported for np.array_equal
+    if not mobjects_list: # Handle empty list
+        return VGroup()
+    group = VGroup(*mobjects_list).arrange(DOWN, buff=buff)
+    if center_point is not None: # If a center_point is specified for the group
+        group.move_to(center_point) # ORIGIN (0,0,0) is the default for move_to if center_point is True but no array
+    return group
+
+# --- Helper Function: get_zone_center ---
+# Returns a predefined coordinate for a named zone.
+# Placeholder: currently returns ORIGIN and logs a warning.
+def get_zone_center(zone_name: str):
+    # Ensure logger is defined, ORIGIN is available from 'from manim import *'
+    # Ensure np is imported if np.array values are to be returned for specific zones.
+    logger.warning(f"get_zone_center called for '{zone_name}'. It currently returns ORIGIN (0,0,0). "
+                   f"Define actual zone coordinates in this boilerplate if specific positioning is critical.")
+    # Example for specific zones (uncomment and adapt here if needed):
+    # if zone_name == "TITLE_ZONE":
+    #     return np.array([0, 3, 0]) # e.g., Top center
+    # if zone_name == "MAIN_CONTENT_AREA":
+    #     return np.array([0, 0, 0]) # e.g., Screen center
+    return ORIGIN # Default to screen center (0,0,0)
+
+# --- END OF PREPENDED BOILERPLATE ---
+# LLM-generated code (starting with 'from manim import *') should follow.
+
+"""
+
 class VisualArchitect:
     def __init__(self):
         """
@@ -135,11 +178,33 @@ class VisualArchitect:
         return code.strip()
 
     def _validate_and_fix_manim_code(self, code: str, scene_class_name: str) -> str:
-        # Ensure basic Manim import if missing (prompt should handle this, but as a fallback)
-        # This should be done first so any subsequent class wrapping has access to Manim `Scene`
-        if "from manim import" not in code and "import manim" not in code:
-            logger.warning("Manim import not found in generated code. Adding 'from manim import *' at the top.")
-            code = "from manim import *\n\n" + code
+        # Ensure basic Manim import if missing (LLM is also prompted to include this)
+        # Check if "from manim import *" is somewhere near the top, after potential boilerplate.
+        # A simple check is if it's in the first few lines of the LLM's actual output part.
+        # Since boilerplate is prepended, we check after it.
+        
+        boilerplate_line_count = MANIM_SCRIPT_BOILERPLATE.count('\n')
+        code_lines = code.split('\n')
+        
+        # Check for manim import roughly where LLM output starts
+        llm_actual_code_start_line = boilerplate_line_count 
+        manim_import_found = False
+        # Search in a reasonable window after boilerplate for "from manim import *"
+        # This handles cases where LLM might add a blank line or two before its import.
+        for i in range(llm_actual_code_start_line, min(len(code_lines), llm_actual_code_start_line + 5)):
+            if "from manim import *" in code_lines[i]:
+                manim_import_found = True
+                break
+        
+        if not manim_import_found:
+            logger.warning("Core 'from manim import *' not found where expected after boilerplate. Attempting to insert it after boilerplate.")
+            # Insert "from manim import *" right after the boilerplate section
+            if len(code_lines) > boilerplate_line_count:
+                code_lines.insert(boilerplate_line_count, "from manim import *")
+            else: # If LLM output was empty or very short
+                code_lines.append("from manim import *")
+            code = '\n'.join(code_lines)
+
 
         class_def_str = f"class {scene_class_name}(Scene):"
         construct_def_regex = r"def\s+construct\s*\(\s*self\s*\):"
@@ -228,11 +293,12 @@ class VisualArchitect:
             # Add any other placeholders here if your template uses them
         )
 
-        # Prepend the Manim API guide and an instruction to use it
+        # Updated Prompt: Informs LLM that helpers ARE PROVIDED.
+        # LLM's responsibility is to generate the "from manim import *" and the Scene class.
         full_prompt = (
-            "Please generate Manim Community v0.19.0 Python code for the following scene. "
-            "The entire output MUST be a single, raw Python code block, directly executable. "
-            "The script structure MUST be: 1. Imports, 2. Helper Function Definitions, 3. Manim Scene Class.\n\n"
+            "You are an expert Manim programmer. Your task is to generate a complete, directly executable Manim Community v0.19.0 Python script for a single scene. "
+            "The script you generate will have some helper functions and necessary imports (`numpy`, `logging`) prepended to it programmatically. "
+            "Therefore, your generated code MUST start with `from manim import *`.\\n\\n"
 
             "**1. MANDATORY IMPORTS (at the very top):**\n"
             "Ensure `from manim import *`, `import numpy as np`, and `import logging` are present. Also include `logger = logging.getLogger(__name__)`.\n\n"
@@ -241,52 +307,61 @@ class VisualArchitect:
             "You MUST ALWAYS include the following Python function definitions in every generated script, exactly as shown, after imports and before the Scene class definition. These definitions are mandatory boilerplate.\n\n"
 
             "   # --- Helper Function: stack_mobjects_vertically ---\n"
-            "   def stack_mobjects_vertically(mobjects_list, center_point=ORIGIN, buff=0.5):\n"
-            "       # Ensure VGroup and ORIGIN are available from manim import\n"
+            "   # Stacks a list of Mobjects vertically.\n"
+            "   # `center_point=None` means the group's final position is determined purely by arrange,\n"
+            "   # otherwise, it's moved to the specified center_point after arrangement.\n"
+            "   def stack_mobjects_vertically(mobjects_list, center_point=None, buff=0.5):\n"
+            "       # Ensure VGroup, DOWN, ORIGIN are available from 'from manim import *'\n"
+            "       # Ensure np is imported for np.array_equal\n"
+            "       if not mobjects_list: # Handle empty list\n"
+            "           return VGroup()\n"
             "       group = VGroup(*mobjects_list).arrange(DOWN, buff=buff)\n"
-            "       if not np.array_equal(center_point, ORIGIN): # Only move if center_point is not default ORIGIN\n"
-            "           group.move_to(center_point)\n"
+            "       if center_point is not None: # If a center_point is specified for the group\n"
+            "           group.move_to(center_point) # ORIGIN (0,0,0) is the default for move_to if center_point is True but no array\n"
             "       return group\n\n"
 
             "   # --- Helper Function: get_zone_center ---\n"
+            "   # Returns a predefined coordinate for a named zone.\n"
+            "   # Placeholder: currently returns ORIGIN and logs a warning.\n"
             "   def get_zone_center(zone_name: str):\n"
-            "       # Ensure logger is defined, ORIGIN from manim, np for numpy array\n"
-            "       logger.warning(f\"get_zone_center called for '{zone_name}\' using default ORIGIN. Define actual zone coordinates if specific positioning is critical.\")\n"
-            "       # Example for specific zones (adapt as needed by uncommenting and defining coordinates):\n"
-            "       # main_content_area_center = np.array([0, 1, 0]) # Example: 1 unit up from center\n"
+            "       # Ensure logger is defined, ORIGIN is available from 'from manim import *'\n"
+            "       # Ensure np is imported if np.array values are to be returned for specific zones.\n"
+            "       logger.warning(f\"get_zone_center called for '{zone_name}'. It currently returns ORIGIN (0,0,0). \"\n"
+            "                      f\"Define actual zone coordinates in this boilerplate if specific positioning is critical.\")\n"
+            "       # Example for specific zones (uncomment and adapt here if needed):\n"
+            "       # if zone_name == \"TITLE_ZONE\":\n"
+            "       #     return np.array([0, 3, 0]) # e.g., Top center\n"
             "       # if zone_name == \"MAIN_CONTENT_AREA\":\n"
-            "       #     return main_content_area_center\n"
-            "       return ORIGIN # Default to screen center\n\n"
+            "       #     return np.array([0, 0, 0]) # e.g., Screen center\n"
+            "       return ORIGIN # Default to screen center (0,0,0)\n\n"
+
+            "**Your generated code MUST:**\\n"
+            "1.  Start with the line: `from manim import *`\\n"
+            "2.  Follow with the Manim scene class definition: `class " + manim_class_name + "(Scene):`\\n"
+            "3.  Implement the `construct(self):` method for that class, using Manim v0.19.0 syntax based on the API guide and scene request below.\\n\\n"
+
+            "**CRITICAL RULE for `Line` objects (and similar like `Arrow`) within your `construct` method:**\\n"
+            "   The `Line` constructor *always* requires `start` and `end` arguments. Both *MUST* be 3D points (e.g., `[x,y,z]` list or NumPy array like `np.array([1,1,0])`).\\n"
+            "   - Correct: `Line(start=[0,0,0], end=[1,2,3])` or `Line(ORIGIN, RIGHT)`\\n"
+            "   - **ABSOLUTELY INCORRECT**: `Line(-0.5, -0.5, 0)` if you mean `start=[-0.5,-0.5,0]`.\\n"
+            "   Always use `Line(start_point_array, end_point_array)` structure.\\n\\n"
+
+            "**CRITICAL RULE for Mobject Layout (Stacking/Arranging) within your `construct` method:**\\n"
+            "   When arranging Mobjects (e.g., vertically): You should primarily use the provided `stack_mobjects_vertically` helper function, or Manim's built-in `VGroup(*item_list).arrange(DOWN, buff=...)`. Avoid inventing other layout functions.\\n\\n"
             
-            "   # --- END OF MANDATORY HELPER DEFINITIONS ---\n\n"
+            "**For ANY OTHER custom helper function** you invent for use within your `construct` method: It MUST be fully defined within the generated Python script, placed *inside* your Scene class if specific to it, or *before* your Scene class (after `from manim import *`) if it's more general and doesn't conflict with provided helpers.\\n\\n"
 
-            "**3. MANIM SCENE CLASS DEFINITION (after helper functions):**\n"
-            "Define your Manim scene class (e.g., `class {manim_class_name}(Scene):`) and its `construct` method here.\n\n"
+            "**Output Format:** Your entire response MUST be a single block of raw Python code. Do NOT include any markdown formatting (like ```python at the start/end), explanations, or any other text outside of this single Python code block. The script must be directly executable after the boilerplate (containing helpers) is prepended.\\n\\n"
 
-            "**CRITICAL RULE for `Line` objects (and similar like `Arrow`) within your `construct` method:**\n"
-            "The `Line` constructor *always* requires `start` and `end` arguments. Both *MUST* be 3D points (e.g., `[x,y,z]` list or NumPy array).\n"
-            "   - Correct: `Line(start=[0,0,0], end=[1,2,3])` or `Line(ORIGIN, RIGHT)`\n"
-            "   - **ABSOLUTELY INCORRECT**: `Line(-0.5, -0.5, 0)` if you mean `start=[-0.5,-0.5,0]`.\n"
-            "Always use `Line(start_point_array, end_point_array)` structure.\n\n"
+            "---BEGIN MANIM V0.19.0 API GUIDE (for reference when writing the Scene class logic)---\\n"
+            f"{self.manim_api_guide_content}\\n"
+            "---END MANIM V0.19.0 API GUIDE---\\n\\n"
 
-            "**CRITICAL RULE for Mobject Layout (Stacking/Arranging) within your `construct` method:**\n"
-            "When arranging Mobjects (e.g., vertically): You should primarily use the `stack_mobjects_vertically` function defined above, or Manim's built-in `VGroup(...).arrange(DOWN, buff=...)`. Avoid inventing other layout functions.\n\n"
-
-            "**For ANY OTHER custom helper function** you invent for use within your `construct` method: It MUST be fully defined within the generated Python script, placed with the other helper functions before the class definition.\n\n"
-
-            "Failure to adhere to this guide, these CRITICAL RULES, and the MANDATORY structure (Imports, then Helper Definitions, then Scene Class) will result in code that does not run.\n\n"
-
-            "IMPORTANT (Final Output Format): Your entire response MUST be a single block of raw Python code. Do NOT include any markdown formatting (like ```python at the start/end of the whole code block), explanations, or any other text outside of this single Python code block. The script must be directly executable.\n\n"
-
-            "---BEGIN MANIM V0.19.0 API GUIDE (for reference when writing the Scene class logic)---\n"
-            f"{self.manim_api_guide_content}\n"
-            "---END MANIM V0.19.0 API GUIDE---\n\n"
-
-            "Now, using the above guide and API reference, generate the complete Manim Python script based on this request (remembering the mandatory imports and helper function definitions at the top):\n"
-            f"{prompt}"
+            "Now, using the above guide and API reference, generate the Manim Python code (starting with `from manim import *`, then your class `{manim_class_name}(Scene):`, etc.) for the following request:\\n"
+            f"{prompt}\"\n"
         )
 
-        logger.info(f"Generating Manim code for Scene {scene_number}: '{scene_title}' using model {config.OPENROUTER_MODEL_NAME} with layout_utils")
+        logger.info(f"Generating Manim code for Scene {scene_number}: '{scene_title}' using model {config.OPENROUTER_MODEL_NAME}")
         # Log the full prompt for debugging (can be very long)
         # logger.debug(f"Full prompt sent to LLM for scene {scene_title}:\\n{full_prompt}")
 
@@ -309,7 +384,13 @@ class VisualArchitect:
             return None, None
 
         cleaned_code = self._clean_generated_code(generated_code)
-        final_code = self._validate_and_fix_manim_code(cleaned_code, manim_class_name)
+        
+        # Programmatically prepend the boilerplate to the cleaned LLM code
+        final_llm_code_with_boilerplate = MANIM_SCRIPT_BOILERPLATE + cleaned_code
+        
+        # Validate and potentially fix the combined code (e.g., ensure class def, main manim import)
+        # The validator should be aware that helpers are now at the top.
+        final_code = self._validate_and_fix_manim_code(final_llm_code_with_boilerplate, manim_class_name)
 
         # Save the generated Python script
         script_file_name = f"scene_{scene_number:02d}_{sane_scene_title}.py"

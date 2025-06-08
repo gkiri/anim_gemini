@@ -1,6 +1,7 @@
 {"levelname": "INFO", "module": "logger_utils", "message": "Log file will be saved in <>"}
 {"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 0 : Partial movie file written in <>"}
 {"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 1 : Partial movie file written in <>"}
+{"levelname": "WARNING", "module": "scene_01_Scene_1_Topic__NonCooperation_Movement", "message": "get_zone_center called for 'MAIN_CONTENT_AREA'. It currently returns ORIGIN (0,0,0). Define actual zone coordinates in this boilerplate if specific positioning is critical."}
 {"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 2 : Partial movie file written in <>"}
 {"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 3 : Partial movie file written in <>"}
 {"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 4 : Partial movie file written in <>"}
