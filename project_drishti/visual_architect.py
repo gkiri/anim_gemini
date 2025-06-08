@@ -48,45 +48,146 @@ class VisualArchitect:
         os.makedirs(self.output_script_dir, exist_ok=True)
         os.makedirs(self.output_md_dir, exist_ok=True)
 
+        # Load the prompt template
+        self.prompt_template = self._load_prompt_template()
+        # Load the Manim API guide
+        self.manim_api_guide_content = self._load_manim_api_guide()
+
+    def _load_prompt_template(self) -> str:
+        """Loads the prompt template from the file specified in config."""
+        template_path = config.VISUAL_ARCHITECT_PROMPT_TEMPLATE_PATH
+        # Ensure the path is absolute or correctly relative to the workspace root
+        if not os.path.isabs(template_path):
+            # Assuming config.py is in project_drishti, and project_drishti is in workspace root
+            # or that the path in config is already workspace-relative
+            pass # Path in config is typically treated as relative to workspace root by file ops
+
+        try:
+            with open(template_path, "r") as f:
+                return f.read()
+        except FileNotFoundError:
+            logger.error(f"CRITICAL: Visual Architect prompt template not found at {template_path}. Falling back to basic prompt.")
+            # Fallback to a very basic prompt if template is missing
+            return "Generate a Manim scene class {manim_class_name}(Scene) for topic '{topic_title}', scene '{scene_title}', narration: '''{narration}'''."
+        except Exception as e:
+            logger.error(f"CRITICAL: Error loading prompt template from {template_path}: {e}. Falling back to basic prompt.")
+            return "Generate a Manim scene class {manim_class_name}(Scene) for topic '{topic_title}', scene '{scene_title}', narration: '''{narration}'''."
+
+    def _load_manim_api_guide(self) -> str:
+        """Loads the Manim API guide from the specified path relative to the workspace root."""
+        # The guide is at the workspace root, config.APP_BASE_DIR is 'anim_gemini'
+        # So, path is relative from APP_BASE_DIR to workspace root, then to the file.
+        # Workspace root is one level up from APP_BASE_DIR.
+        guide_path = os.path.join(config.APP_BASE_DIR, "..", "manim_v0.19.0_api_guide.md")
+        guide_path = os.path.abspath(guide_path) # Resolve to absolute path
+
+        try:
+            with open(guide_path, "r") as f:
+                logger.info(f"Successfully loaded Manim API guide from {guide_path}")
+                return f.read()
+        except FileNotFoundError:
+            logger.error(f"CRITICAL: Manim API guide not found at {guide_path}. LLM guidance will be impaired.")
+            return "Manim API Guide not found. Please ensure 'manim_v0.19.0_api_guide.md' is in the workspace root."
+        except Exception as e:
+            logger.error(f"CRITICAL: Error loading Manim API guide from {guide_path}: {e}. LLM guidance will be impaired.")
+            return f"Error loading Manim API Guide: {e}"
+
     def _clean_generated_code(self, code: str) -> str:
         """
         Cleans common issues from LLM-generated Python code, like markdown formatting.
+        It specifically looks for a fenced code block (e.g., ```python ... ```)
+        and extracts its content, discarding any text outside of this primary block.
         """
-        # Remove python markdown ```python ... ``` or ``` ... ```
-        if code.startswith("```python"):
-            code = code[9:]
-            if code.endswith("```"):
-                code = code[:-3]
-        elif code.startswith("```"):
-            code = code[3:]
-            if code.endswith("```"):
-                code = code[:-3]
+        # Regex to find ```python ... ``` or ``` ... ``` blocks
+        # It captures the content within the first such block found.
+        # re.DOTALL makes . match newlines as well.
+        python_block_match = re.search(r"```python\n(.*?)\n```", code, re.DOTALL)
+        if python_block_match:
+            return python_block_match.group(1).strip()
+
+        generic_block_match = re.search(r"```\n(.*?)\n```", code, re.DOTALL)
+        if generic_block_match:
+            return generic_block_match.group(1).strip()
+
+        # Fallback if no explicit fenced block is found by regex,
+        # or if the LLM's output is just raw code without fences.
+        # This part attempts to strip leading/trailing fences if they exist loosely.
+        # However, the primary issue is often extra text *after* a fenced block.
+        # If the regex found something, it would have returned.
+        # If we are here, the regex didn't find a clear ```python ... ``` or ``` ... ``` block.
+
+        # Original simple stripping logic as a final fallback for non-regex-matching cases:
+        # This handles cases where the entire string might be loosely wrapped.
+        temp_code = code.strip()
+        if temp_code.startswith("```python"):
+            temp_code = temp_code[len("```python"):].strip() # Remove prefix and strip
+            if temp_code.endswith("```"):
+                temp_code = temp_code[:-len("```")].strip() # Remove suffix and strip
+            return temp_code
         
-        # Strip leading/trailing whitespace
-        code = code.strip()
-        return code
+        if temp_code.startswith("```"):
+            temp_code = temp_code[len("```"):].strip()
+            if temp_code.endswith("```"):
+                temp_code = temp_code[:-len("```")].strip()
+            return temp_code
+        
+        # If no fences were found by regex or simple stripping, return the code as is (stripped).
+        return code.strip()
 
     def _validate_and_fix_manim_code(self, code: str, scene_class_name: str) -> str:
-        """
-        Performs basic validation and attempts to fix common Manim code issues.
-        This is a placeholder for more sophisticated validation.
-        - Ensures the scene class name is present.
-        - Ensures basic imports if missing (very naive).
-        """
-        # Ensure the expected class name is in the code
-        if f"class {scene_class_name}(Scene):" not in code:
-            logger.warning(f"Generated code does not contain the expected class definition: 'class {scene_class_name}(Scene):'")
-            # Attempt to inject it if a class definition is missing entirely (very risky)
-            if "class " not in code and "def construct(self):" in code:
-                logger.info(f"Attempting to wrap code in class {scene_class_name}")
-                code = f"from manim import *\n\nclass {scene_class_name}(Scene):\n    def construct(self):\n" + "\n".join([f"        {line}" for line in code.split('\n') if line.strip()])
-        
-        # Naively ensure manim import if not present
-        if "from manim import" not in code:
-            logger.warning("Manim import not found in generated code. Adding 'from manim import *'.")
+        # Ensure basic Manim import if missing (prompt should handle this, but as a fallback)
+        # This should be done first so any subsequent class wrapping has access to Manim `Scene`
+        if "from manim import" not in code and "import manim" not in code:
+            logger.warning("Manim import not found in generated code. Adding 'from manim import *' at the top.")
             code = "from manim import *\n\n" + code
+
+        class_def_str = f"class {scene_class_name}(Scene):"
+        construct_def_regex = r"def\s+construct\s*\(\s*self\s*\):"
+
+        if class_def_str not in code:
+            logger.warning(f"Generated code does not contain the expected class definition: '{class_def_str}'. Attempting a simple fix.")
+            
+            construct_match = re.search(construct_def_regex, code)
+            if "class " not in code and construct_match:
+                # This is a very basic attempt to wrap the existing code, assuming the LLM at least provided the construct method.
+                # The prompt now *mandates* helper functions are defined BEFORE the class.
+                # If the LLM adheres, helpers should remain top-level. This fix mainly ensures the class structure.
+                
+                # Find the start of the construct method definition
+                construct_def_line_start = -1
+                code_lines = code.split('\n')
+                for i, line in enumerate(code_lines):
+                    if re.search(construct_def_regex, line):
+                        construct_def_line_start = i
+                        break
+                
+                if construct_def_line_start != -1:
+                    # Assume everything from this line onwards should be part of the class, indented
+                    # This is a simplification. The LLM is heavily prompted to put helpers *before* class.
+                    
+                    # Extract lines before the `construct` method (should be imports, and *hopefully* our mandated helpers)
+                    pre_class_lines = code_lines[:construct_def_line_start]
+                    
+                    # Extract lines from `construct` onwards
+                    class_content_lines = code_lines[construct_def_line_start:]
+                    
+                    # Indent the class content (construct and its body)
+                    indented_class_content = [f"    {line}" for line in class_content_lines]
+                    
+                    # Assemble the new code
+                    new_code_parts = []
+                    new_code_parts.extend(pre_class_lines)
+                    new_code_parts.append(class_def_str) # Add the class definition
+                    new_code_parts.extend(indented_class_content)
+                    
+                    code = "\n".join(new_code_parts)
+                    logger.info(f"Added missing class definition '{class_def_str}' and indented subsequent content.")
+                else:
+                    logger.error(f"Attempted to fix missing class, but could not find start of 'def construct(self):'. Code might be badly malformed.")
+            else:
+                logger.warning(f"Class definition '{class_def_str}' missing, but conditions for simple auto-wrapping not met. Code might be malformed or already have a different class structure.")
         
-        return code
+        return code.strip() # Ensure stripping at the end
 
     def generate_manim_code_for_scene(self, scene_data: dict, topic_title: str) -> tuple[str | None, str | None]:
         """
@@ -119,57 +220,80 @@ class VisualArchitect:
         # If strictly following `Scene{section_index + 1}` (scene_number is section_index + 1):
         # manim_class_name = f"Scene{scene_number}"
 
-        prompt = f"""
-        You are an expert Manim programmer. Your task is to generate a complete, runnable Manim Python script for a single scene.
-        The script should define a Manim Scene class named '{manim_class_name}'.
-        This class should inherit from `manim.Scene`.
+        prompt = self.prompt_template.format(
+            manim_class_name=manim_class_name,
+            topic_title=topic_title,
+            scene_title=scene_title,
+            narration=narration
+            # Add any other placeholders here if your template uses them
+        )
 
-        Topic of the video: "{topic_title}"
-        Title of this specific scene: "{scene_title}"
-        Narration/Key Points for this scene:
-        '''{narration}'''
+        # Prepend the Manim API guide and an instruction to use it
+        full_prompt = (
+            "Please generate Manim Community v0.19.0 Python code for the following scene. "
+            "The entire output MUST be a single, raw Python code block, directly executable. "
+            "The script structure MUST be: 1. Imports, 2. Helper Function Definitions, 3. Manim Scene Class.\n\n"
 
-        Instructions for Manim code generation:
-        1.  Create a class `{manim_class_name}(Scene)`.
-        2.  Implement the `construct(self)` method.
-        3.  Use Manim objects (Text, Tex, MathTex, Shapes like Circle, Square, Polygon, Line, etc.) to visually represent the narration and scene title. Prefer Manim's built-in vector objects.
-        4.  Be highly creative and ensure the animation is visually rich, engaging, and helps explain the topic clearly for a UPSC (Indian Civil Services Exam) student.
-        5.  Make sure text is readable, not too small, and does not overflow the screen.
-        6.  Animations should be smooth. Use effects like FadeIn, FadeOut, Write, Create, Transform, LaggedStart, etc.
-        7.  Ensure all elements are properly positioned and do not overlap unintentionally.
-        8.  The animation for this scene should be self-contained within the `{manim_class_name}` class.
-        9.  The script MUST include all necessary imports (e.g., `from manim import *`).
-        10. The generated code should be a single Python script block, ready to be saved and run.
-        11. Do NOT include any explanations or text outside the Python code block itself.
-        12. **Critical for avoiding errors:** Do NOT use `SVGMobject` or `ImageMobject` with placeholder file paths (e.g., 'path/to/icon.svg', 'image.png', 'your_image.jpg'). These will cause the script to fail.
-        13. Instead of external files, represent all visual elements using Manim's built-in shapes (`Circle`, `Square`, `Triangle`, `Line`, `Polygon`, etc.), `Text`, `Tex`, or `MathTex`. For example, to represent an idea, you might use a `Lightbulb` shape if available, or compose it from a `Circle` and `Lines`. If you want to suggest where a specific image *could* ideally be used (if the user had it), add a comment like `# An icon of [concept] could be placed here` but ensure the *functional code* uses Manim shapes as a fallback or primary representation (e.g., `placeholder_icon = Circle(radius=0.5)`).
-        14. Strive for production-quality, error-free Manim code.
-        15. Consider using a variety of Manim objects and animations to make the scene dynamic.
-        16. If the narration mentions specific entities, people, or concepts, try to represent them visually using Manim's shape and text objects. For example, represent a person abstractly with a combination of simple shapes.
-        17. Pay attention to timing and pacing. A typical scene might be 15-30 seconds long.
+            "**1. MANDATORY IMPORTS (at the very top):**\n"
+            "Ensure `from manim import *`, `import numpy as np`, and `import logging` are present. Also include `logger = logging.getLogger(__name__)`.\n\n"
 
-        Example of structure:
-        ```python
-        from manim import *
+            "**2. MANDATORY HELPER FUNCTION DEFINITIONS (after imports, before Scene class):**\n"
+            "You MUST ALWAYS include the following Python function definitions in every generated script, exactly as shown, after imports and before the Scene class definition. These definitions are mandatory boilerplate.\n\n"
 
-        class {manim_class_name}(Scene):
-            def construct(self):
-                # Your animation code here
-                title_text = Text("{scene_title}").to_edge(UP)
-                self.play(Write(title_text))
-                # ... more animations based on narration ...
-                self.wait(2)
-        ```
-        
-        Now, generate the Manim Python code for scene '{scene_title}'.
-        """
+            "   # --- Helper Function: stack_mobjects_vertically ---\n"
+            "   def stack_mobjects_vertically(mobjects_list, center_point=ORIGIN, buff=0.5):\n"
+            "       # Ensure VGroup and ORIGIN are available from manim import\n"
+            "       group = VGroup(*mobjects_list).arrange(DOWN, buff=buff)\n"
+            "       if not np.array_equal(center_point, ORIGIN): # Only move if center_point is not default ORIGIN\n"
+            "           group.move_to(center_point)\n"
+            "       return group\n\n"
 
-        logger.info(f"Generating Manim code for Scene {scene_number}: '{scene_title}' using model {config.OPENROUTER_MODEL_NAME}")
+            "   # --- Helper Function: get_zone_center ---\n"
+            "   def get_zone_center(zone_name: str):\n"
+            "       # Ensure logger is defined, ORIGIN from manim, np for numpy array\n"
+            "       logger.warning(f\"get_zone_center called for '{zone_name}\' using default ORIGIN. Define actual zone coordinates if specific positioning is critical.\")\n"
+            "       # Example for specific zones (adapt as needed by uncommenting and defining coordinates):\n"
+            "       # main_content_area_center = np.array([0, 1, 0]) # Example: 1 unit up from center\n"
+            "       # if zone_name == \"MAIN_CONTENT_AREA\":\n"
+            "       #     return main_content_area_center\n"
+            "       return ORIGIN # Default to screen center\n\n"
+            
+            "   # --- END OF MANDATORY HELPER DEFINITIONS ---\n\n"
+
+            "**3. MANIM SCENE CLASS DEFINITION (after helper functions):**\n"
+            "Define your Manim scene class (e.g., `class {manim_class_name}(Scene):`) and its `construct` method here.\n\n"
+
+            "**CRITICAL RULE for `Line` objects (and similar like `Arrow`) within your `construct` method:**\n"
+            "The `Line` constructor *always* requires `start` and `end` arguments. Both *MUST* be 3D points (e.g., `[x,y,z]` list or NumPy array).\n"
+            "   - Correct: `Line(start=[0,0,0], end=[1,2,3])` or `Line(ORIGIN, RIGHT)`\n"
+            "   - **ABSOLUTELY INCORRECT**: `Line(-0.5, -0.5, 0)` if you mean `start=[-0.5,-0.5,0]`.\n"
+            "Always use `Line(start_point_array, end_point_array)` structure.\n\n"
+
+            "**CRITICAL RULE for Mobject Layout (Stacking/Arranging) within your `construct` method:**\n"
+            "When arranging Mobjects (e.g., vertically): You should primarily use the `stack_mobjects_vertically` function defined above, or Manim's built-in `VGroup(...).arrange(DOWN, buff=...)`. Avoid inventing other layout functions.\n\n"
+
+            "**For ANY OTHER custom helper function** you invent for use within your `construct` method: It MUST be fully defined within the generated Python script, placed with the other helper functions before the class definition.\n\n"
+
+            "Failure to adhere to this guide, these CRITICAL RULES, and the MANDATORY structure (Imports, then Helper Definitions, then Scene Class) will result in code that does not run.\n\n"
+
+            "IMPORTANT (Final Output Format): Your entire response MUST be a single block of raw Python code. Do NOT include any markdown formatting (like ```python at the start/end of the whole code block), explanations, or any other text outside of this single Python code block. The script must be directly executable.\n\n"
+
+            "---BEGIN MANIM V0.19.0 API GUIDE (for reference when writing the Scene class logic)---\n"
+            f"{self.manim_api_guide_content}\n"
+            "---END MANIM V0.19.0 API GUIDE---\n\n"
+
+            "Now, using the above guide and API reference, generate the complete Manim Python script based on this request (remembering the mandatory imports and helper function definitions at the top):\n"
+            f"{prompt}"
+        )
+
+        logger.info(f"Generating Manim code for Scene {scene_number}: '{scene_title}' using model {config.OPENROUTER_MODEL_NAME} with layout_utils")
+        # Log the full prompt for debugging (can be very long)
+        # logger.debug(f"Full prompt sent to LLM for scene {scene_title}:\\n{full_prompt}")
 
         try:
             response = self.client.chat.completions.create(
                 model=config.OPENROUTER_MODEL_NAME,
-                messages=[{"role": "user", "content": prompt}],
+                messages=[{"role": "user", "content": full_prompt}],
                 temperature=config.LLM_DEFAULT_TEMPERATURE,
                 # As per user's reference, reasoning_effort might be specific to some models
                 # For general OpenAI API, it's not standard. OpenRouter might handle it.
@@ -202,10 +326,12 @@ class VisualArchitect:
         md_output_path = os.path.join(self.output_md_dir, f"visual_script_scene_{scene_number:02d}_{sane_scene_title}.md")
         try:
             with open(md_output_path, "w") as f:
-                f.write(f"# Visual Script (LLM-Generated Manim Code) for: {scene_title}\n\n")
-                f.write(f"## Prompt Sent to LLM:\n\n```text\n{prompt}\n```\n\n")
-                f.write(f"## Raw LLM Response:\n\n```python\n{generated_code}\n```\n\n")
-                f.write(f"## Cleaned & Validated Code ({script_file_name}):\n\n```python\n{final_code}\n```\n")
+                f.write(f"# Visual Script (LLM-Generated Manim Code) for: {scene_title}\\n\\n")
+                f.write(f"## Prompt Sent to LLM:\\n\\n") # We'll write the user-focused part, not the whole guide
+                f.write(f"### User Request Part of Prompt:\\n```text\\n{prompt}\\n```\\n\\n")
+                f.write(f"### Note: The full prompt included the Manim v0.19.0 API Guide.\\n\\n")
+                f.write(f"## Raw LLM Response:\\n\\n```python\\n{generated_code}\\n```\\n\\n")
+                f.write(f"## Cleaned & Validated Code ({script_file_name}):\\n\\n```python\\n{final_code}\\n```\\n")
             logger.info(f"Visual Architect debug MD for '{scene_title}' saved to {md_output_path}")
         except IOError as e:
             logger.warning(f"Failed to write debug MD file to {md_output_path}: {e}")

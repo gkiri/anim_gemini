@@ -10,4 +10,4 @@
 {"levelname": "INFO", "module": "scene_file_writer", "message": "Combining to Movie file."}
 {"levelname": "INFO", "module": "scene_file_writer", "message": "\nFile ready at <>\n"}
 {"levelname": "INFO", "module": "scene", "message": "Rendered Scene1Scene_1_Topic__NonCooperation_Movement\nPlayed 8 animations"}
-{"levelname": "INFO", "module": "file_ops", "message": "Previewed File at: '/root/manim_gemini/outputs/generated_content/videos/scene_01_Scene_1_Topic__NonCooperation_Movement/480p15/Scene1Scene_1_Topic__NonCooperation_Movement.mp4'"}
+{"levelname": "INFO", "module": "file_ops", "message": "Previewed File at: '/root/manim_gemini/anim_gemini/outputs/generated_content/videos/scene_01_Scene_1_Topic__NonCooperation_Movement/480p15/Scene1Scene_1_Topic__NonCooperation_Movement.mp4'"}

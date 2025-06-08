@@ -110,6 +110,7 @@ class ManimRenderer:
                 capture_output=True, 
                 text=True, 
                 check=False, # We check returncode manually
+                cwd=config.APP_BASE_DIR # Set Current Working Directory
             )
 
             # Log Manim's output

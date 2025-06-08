@@ -1,0 +1,133 @@
+import sys
+import os
+from pathlib import Path
+
+# Path manipulation to allow importing anim_gemini.project_drishti
+# This script is assumed to be in a directory like: <workspace_root>/anim_gemini/outputs/generated_content/manim_scripts/
+# The project_drishti module is expected at: <workspace_root>/anim_gemini/project_drishti/
+# Thus, we add <workspace_root> to sys.path so 'anim_gemini.project_drishti...' can be imported.
+script_dir = Path(__file__).resolve().parent
+# To reach <workspace_root> from <workspace_root>/anim_gemini/outputs/generated_content/manim_scripts/
+# we go up 4 levels from 'manim_scripts' (scripts -> generated_content -> outputs -> anim_gemini -> <workspace_root>)
+# So, if project_root_for_import should be <workspace_root>, it's script_dir.parents[4]
+project_root_for_import = script_dir.parents[4] # Adjust this index if script location changes
+
+if str(project_root_for_import) not in sys.path:
+    sys.path.insert(0, str(project_root_for_import))
+
+from manim import *
+from anim_gemini.project_drishti.manim_layout_utils import * # Corrected import
+import numpy as np # If needed
+
+You are an expert Manim programmer. Your task is to generate a complete, runnable Manim Python script for a single scene.
+The script should define a Manim Scene class named '{manim_class_name}'.
+This class should inherit from `manim.Scene`.
+
+You MUST use the provided 'layout_utils' for consistent and robust layouts.
+Specifically, import and use:
+- `create_smart_text` for all text elements (titles, narration, body text).
+- `DEFAULT_ZONES` (e.g., "TITLE_AREA", "NARRATION_AREA", "MAIN_CONTENT_AREA", "LEFT_HALF", "RIGHT_HALF") to position elements.
+- `get_zone_center`, `get_zone_width`, `get_zone_height` for precise positioning within zones if needed.
+- `stack_mobjects_vertically`, `stack_mobjects_horizontally` for arranging multiple items.
+
+Topic of the video: "{topic_title}"
+Title of this specific scene: "{scene_title}"
+Narration/Key Points for this scene:
+'''{narration}'''
+
+Instructions for Manim code generation:
+1.  **Start with Boilerplate**: Begin the Python script with the following exact boilerplate. This ensures `layout_utils` can be found:
+    ```python
+    import sys
+    import os
+
+    # This script is typically in: APP_BASE_DIR/outputs/generated_content/manim_scripts/
+    # layout_utils.py is in: APP_BASE_DIR/layout_utils.py
+    # Add APP_BASE_DIR to sys.path to allow direct import of layout_utils.
+    script_absolute_path = os.path.abspath(__file__)
+    script_dir = os.path.dirname(script_absolute_path)
+    # Navigate three levels up from script_dir (manim_scripts -> generated_content -> outputs -> APP_BASE_DIR)
+    app_base_dir = os.path.abspath(os.path.join(script_dir, "..", "..", ".."))
+
+    if app_base_dir not in sys.path:
+        sys.path.insert(0, app_base_dir)
+
+    from manim import *
+    from layout_utils import * # Core utilities for layout
+    import numpy as np # If needed for complex calculations
+    ```
+2.  **Class Definition**: After the boilerplate, create a class `{manim_class_name}(Scene)`.
+3.  **`construct(self)` Method**: Implement the `construct(self)` method within this class.
+4.  **Use `create_smart_text`**:
+    - For the main scene title, use `create_smart_text("{scene_title}", zone_name="TITLE_AREA", font_size=OptionalLargeFontSize, max_font_size=OptionalMaxFontSize)`.
+    - For narration text (if displayed directly), use `create_smart_text("Narration snippet...", zone_name="NARRATION_AREA", font_size=OptionalNarrationFontSize)`.
+    - For other textual content, use `create_smart_text("Content...", zone_name="MAIN_CONTENT_AREA", target_zone_width=get_zone_width("MAIN_CONTENT_AREA")*0.8, etc.)`. Adjust `target_zone_width/height` and `padding` as needed.
+5.  **Visual Representation**: Use Manim objects (Text, Tex, MathTex, Shapes like Circle, Square, Polygon, Line, etc.) to visually represent the narration and scene title. Position these within zones like `MAIN_CONTENT_AREA`, `LEFT_HALF`, `RIGHT_HALF`, etc.
+6.  **Layout Complex Content**: If placing multiple items (text blocks, shapes) in `MAIN_CONTENT_AREA`, use `stack_mobjects_vertically` or `stack_mobjects_horizontally`, positioning the resulting group in the zone's center (e.g., `group.move_to(get_zone_center("MAIN_CONTENT_AREA"))`).
+7.  **Creativity and Clarity**: Be highly creative and ensure the animation is visually rich, engaging, and helps explain the topic clearly for a UPSC (Indian Civil Services Exam) student.
+8.  **Readability**: `create_smart_text` will help with this, but ensure overall composition is clear.
+9.  **Animations**: Use smooth animations: FadeIn, FadeOut, Write, Create, Transform, LaggedStart.
+10. **Positioning**: Ensure all elements are properly positioned using zones and layout utilities.
+11. **Self-Contained Script**: The animation for this scene should be self-contained within the class structure defined after the boilerplate.
+12. **Imports**: The script MUST include the boilerplate imports: `from manim import *`, `from layout_utils import *`, and optionally `import numpy as np`. Do NOT add the `sys.path` manipulation code.
+13. **Python Code Block Only**: Output only the Python code block, starting with the boilerplate.
+14. **No External Files**: CRITICAL: Do NOT use `SVGMobject` or `ImageMobject` with placeholder file paths. Represent all visual elements using Manim's built-in shapes, `Text`, `Tex`, or `MathTex`. If suggesting an image, comment it out and provide a Manim shape-based fallback. Example: `# An icon of [concept] could be here. Using a Circle instead.` then `placeholder_icon = Circle(radius=0.5).move_to(get_zone_center("SOME_ZONE"))`.
+15. **Production Quality**: Strive for error-free Manim code.
+16. **Dynamic Scenes**: Use a variety of Manim objects and animations.
+17. **Represent Concepts**: Visually represent entities, people, or concepts using Manim's shape and text objects within the layout framework.
+18. **Pacing**: Aim for a typical scene length of 15-30 seconds.
+
+Example of structure (the code you generate should look like this):
+```python
+import sys
+import os
+
+# This script is typically in: APP_BASE_DIR/outputs/generated_content/manim_scripts/
+# layout_utils.py is in: APP_BASE_DIR/layout_utils.py
+# Add APP_BASE_DIR to sys.path to allow direct import of layout_utils.
+script_absolute_path = os.path.abspath(__file__)
+script_dir = os.path.dirname(script_absolute_path)
+# Navigate three levels up from script_dir (manim_scripts -> generated_content -> outputs -> APP_BASE_DIR)
+app_base_dir = os.path.abspath(os.path.join(script_dir, "..", "..", ".."))
+
+if app_base_dir not in sys.path:
+    sys.path.insert(0, app_base_dir)
+
+from manim import *
+from layout_utils import * # Core utilities for layout
+import numpy as np # If needed
+
+class {manim_class_name}(Scene):
+    def construct(self):
+        # title_text = Text("{scene_title}").to_edge(UP) # Old way
+        title_mobject = create_smart_text(
+            "{scene_title}",
+            zone_name="TITLE_AREA",
+            font_size=48, # Example font size
+            max_font_size=60
+        )
+        self.play(Write(title_mobject))
+
+        # Example: Narration text at the bottom
+        narration_mobject = create_smart_text(
+            "This scene explains key concepts using smart text and zones.",
+            zone_name="NARRATION_AREA",
+            font_size=28
+        )
+        self.play(FadeIn(narration_mobject, shift=UP))
+
+        # Example: Content in main area
+        concept1 = create_smart_text("Concept 1", target_zone_width=get_zone_width("MAIN_CONTENT_AREA")*0.4, font_size=32)
+        concept_shape = Circle(radius=1, color=BLUE).next_to(concept1, DOWN, buff=0.5)
+        
+        main_content_group = VGroup(concept1, concept_shape).move_to(get_zone_center("MAIN_CONTENT_AREA"))
+        # Or use stack_mobjects_vertically if they were separate items for stacking:
+        # items_to_stack = [concept1, concept_shape]
+        # main_content_group = stack_mobjects_vertically(items_to_stack, center_point=get_zone_center("MAIN_CONTENT_AREA"))
+
+        self.play(Create(main_content_group))
+        
+        self.wait(2)
+```
+
+Now, generate the Manim Python code for scene '{scene_title}', adhering strictly to using 'layout_utils'. 
