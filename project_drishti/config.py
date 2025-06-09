@@ -41,7 +41,7 @@ LLM_DEFAULT_REASONING_EFFORT = os.getenv("LLM_DEFAULT_REASONING_EFFORT", "low")
 # Path for Visual Architect Prompt Template
 # This path is relative to APP_BASE_DIR/project_drishti/
 # So, effectively APP_BASE_DIR/project_drishti/prompts/visual_architect_prompt_template.txt
-VISUAL_ARCHITECT_PROMPT_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "prompts", "visual_architect_prompt_template.txt")
+VISUAL_ARCHITECT_PROMPT_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "prompts", "visual_architect_creative_prompt.txt")
 
 # Check if the prompt template exists, provide a clear error if not.
 if not os.path.exists(VISUAL_ARCHITECT_PROMPT_TEMPLATE_PATH):

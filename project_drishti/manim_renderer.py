@@ -105,12 +105,27 @@ class ManimRenderer:
         logger.info(f"Full expected video path: {expected_video_full_path}")
 
         try:
+            # --- Environment setup for subprocess ---
+            # Calculate project root directory (one level up from APP_BASE_DIR)
+            project_root_dir = os.path.abspath(os.path.join(config.APP_BASE_DIR, ".."))
+            
+            # Get current environment and update PYTHONPATH
+            env = os.environ.copy()
+            current_pythonpath = env.get("PYTHONPATH", "")
+            if project_root_dir not in current_pythonpath.split(os.pathsep):
+                env["PYTHONPATH"] = f"{project_root_dir}{os.pathsep}{current_pythonpath}".strip(os.pathsep)
+            else:
+                env["PYTHONPATH"] = current_pythonpath # Already there, no change needed or ensure it's structured correctly
+            logger.debug(f"Setting PYTHONPATH for Manim subprocess: {env['PYTHONPATH']}")
+            # --- End of environment setup ---
+
             process = subprocess.run(
                 command, 
                 capture_output=True, 
                 text=True, 
                 check=False, # We check returncode manually
-                cwd=config.APP_BASE_DIR # Set Current Working Directory
+                cwd=config.APP_BASE_DIR, # Set Current Working Directory
+                env=env # Pass modified environment
             )
 
             # Log Manim's output

@@ -28,49 +28,6 @@ from project_drishti import config
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Boilerplate code to be prepended to every LLM-generated Manim script
-# This ensures helper functions are always defined.
-MANIM_SCRIPT_BOILERPLATE = """
-import numpy as np
-import logging
-
-# Logger for helper functions - assumes main script (or Manim) sets up basicConfig
-logger = logging.getLogger(__name__)
-
-# --- Helper Function: stack_mobjects_vertically ---
-# Stacks a list of Mobjects vertically.
-# `center_point=None` means the group's final position is determined purely by arrange,
-# otherwise, it's moved to the specified center_point after arrangement.
-def stack_mobjects_vertically(mobjects_list, center_point=None, buff=0.5):
-    # Ensure VGroup, DOWN, ORIGIN are available from 'from manim import *'
-    # Ensure np is imported for np.array_equal
-    if not mobjects_list: # Handle empty list
-        return VGroup()
-    group = VGroup(*mobjects_list).arrange(DOWN, buff=buff)
-    if center_point is not None: # If a center_point is specified for the group
-        group.move_to(center_point) # ORIGIN (0,0,0) is the default for move_to if center_point is True but no array
-    return group
-
-# --- Helper Function: get_zone_center ---
-# Returns a predefined coordinate for a named zone.
-# Placeholder: currently returns ORIGIN and logs a warning.
-def get_zone_center(zone_name: str):
-    # Ensure logger is defined, ORIGIN is available from 'from manim import *'
-    # Ensure np is imported if np.array values are to be returned for specific zones.
-    logger.warning(f"get_zone_center called for '{zone_name}'. It currently returns ORIGIN (0,0,0). "
-                   f"Define actual zone coordinates in this boilerplate if specific positioning is critical.")
-    # Example for specific zones (uncomment and adapt here if needed):
-    # if zone_name == "TITLE_ZONE":
-    #     return np.array([0, 3, 0]) # e.g., Top center
-    # if zone_name == "MAIN_CONTENT_AREA":
-    #     return np.array([0, 0, 0]) # e.g., Screen center
-    return ORIGIN # Default to screen center (0,0,0)
-
-# --- END OF PREPENDED BOILERPLATE ---
-# LLM-generated code (starting with 'from manim import *') should follow.
-
-"""
-
 class VisualArchitect:
     def __init__(self):
         """
@@ -178,34 +135,75 @@ class VisualArchitect:
         return code.strip()
 
     def _validate_and_fix_manim_code(self, code: str, scene_class_name: str) -> str:
-        # Ensure basic Manim import if missing (LLM is also prompted to include this)
-        # Check if "from manim import *" is somewhere near the top, after potential boilerplate.
-        # A simple check is if it's in the first few lines of the LLM's actual output part.
-        # Since boilerplate is prepended, we check after it.
+        original_lines = code.split('\n')
         
-        boilerplate_line_count = MANIM_SCRIPT_BOILERPLATE.count('\n')
-        code_lines = code.split('\n')
-        
-        # Check for manim import roughly where LLM output starts
-        llm_actual_code_start_line = boilerplate_line_count 
-        manim_import_found = False
-        # Search in a reasonable window after boilerplate for "from manim import *"
-        # This handles cases where LLM might add a blank line or two before its import.
-        for i in range(llm_actual_code_start_line, min(len(code_lines), llm_actual_code_start_line + 5)):
-            if "from manim import *" in code_lines[i]:
-                manim_import_found = True
+        # Preserve shebang/coding directives if present at the very top
+        leading_directives = []
+        content_start_index = 0
+        for i, line in enumerate(original_lines):
+            if line.startswith("#!") or line.startswith("# -*- coding:"):
+                leading_directives.append(line)
+                content_start_index = i + 1
+            else:
                 break
         
-        if not manim_import_found:
-            logger.warning("Core 'from manim import *' not found where expected after boilerplate. Attempting to insert it after boilerplate.")
-            # Insert "from manim import *" right after the boilerplate section
-            if len(code_lines) > boilerplate_line_count:
-                code_lines.insert(boilerplate_line_count, "from manim import *")
-            else: # If LLM output was empty or very short
-                code_lines.append("from manim import *")
-            code = '\n'.join(code_lines)
+        # The rest of the script, after any leading shebang/coding lines
+        llm_core_code_lines = original_lines[content_start_index:]
+        
+        # --- Stage 1: Build the mandatory import block --- 
+        final_script_lines = list(leading_directives) # Start with any shebang/coding lines
+        
+        # Add non-negotiable imports. These will be the definitive imports for the script.
+        final_script_lines.append("from manim import *")
+        final_script_lines.append("from anim_gemini.layout_utils import *  # Ensured by VisualArchitect validator")
+        
+        # Scan original LLM core code for numpy usage to decide if we need to add its import
+        numpy_import_needed = False
+        for line in llm_core_code_lines:
+            if "np." in line: 
+                numpy_import_needed = True
+                break
+        if numpy_import_needed:
+            final_script_lines.append("import numpy as np")
+            logger.info("NumPy import mandatorily added by validator as 'np.' usage was detected in LLM output.")
 
+        forced_imports_log = "\n".join(final_script_lines[len(leading_directives):])
+        logger.info(f"Validator has built the following mandatory import block:\n{forced_imports_log}")
 
+        # --- Stage 2: Filter and append the rest of the original code from LLM ---
+        known_bad_layout_import_signature = "anim_gemini.project_drishti.layout_utils"
+        # These are the exact strings of imports we already added, to avoid duplication.
+        exact_manim_import_str = "from manim import *"
+        exact_correct_layout_import_str = "from anim_gemini.layout_utils import *"
+        exact_numpy_import_str = "import numpy as np"
+
+        for line_content in llm_core_code_lines:
+            stripped_line = line_content.strip()
+
+            # Skip any line containing the signature of the specifically bad import
+            if known_bad_layout_import_signature in line_content:
+                logger.warning(f"Validator actively discarding line due to incorrect import signature: '{line_content}'")
+                continue
+            
+            # Skip lines that are exact matches of imports we already added
+            if stripped_line == exact_manim_import_str:
+                logger.debug(f"Validator skipping redundant exact Manim import line: '{line_content}'")
+                continue
+            
+            # Check for redundant correct layout import (potentially with varied comments)
+            if stripped_line.startswith(exact_correct_layout_import_str.split("#")[0].strip()):
+                 logger.debug(f"Validator skipping redundant correct layout_utils import line: '{line_content}'")
+                 continue
+
+            if numpy_import_needed and stripped_line == exact_numpy_import_str:
+                logger.debug(f"Validator skipping redundant NumPy import line: '{line_content}'")
+                continue
+            
+            final_script_lines.append(line_content)
+
+        code = '\n'.join(final_script_lines)
+
+        # --- Stage 3: Class definition check (remains largely the same) ---
         class_def_str = f"class {scene_class_name}(Scene):"
         construct_def_regex = r"def\s+construct\s*\(\s*self\s*\):"
 
@@ -378,26 +376,27 @@ class VisualArchitect:
                     # "Reasoning-Effort": config.LLM_DEFAULT_REASONING_EFFORT # If supported
                 }
             )
-            generated_code = response.choices[0].message.content
+            llm_response_content = response.choices[0].message.content
         except Exception as e:
             logger.error(f"Error calling OpenRouter API for scene '{scene_title}': {e}")
             return None, None
 
-        cleaned_code = self._clean_generated_code(generated_code)
+        logger.debug(f"Raw LLM Response for Scene {scene_data.get('scene_number', 'Unknown')}:\n{llm_response_content}")
+
+        cleaned_code = self._clean_generated_code(llm_response_content)
         
-        # Programmatically prepend the boilerplate to the cleaned LLM code
-        final_llm_code_with_boilerplate = MANIM_SCRIPT_BOILERPLATE + cleaned_code
-        
-        # Validate and potentially fix the combined code (e.g., ensure class def, main manim import)
-        # The validator should be aware that helpers are now at the top.
-        final_code = self._validate_and_fix_manim_code(final_llm_code_with_boilerplate, manim_class_name)
+        validated_code = self._validate_and_fix_manim_code(cleaned_code, manim_class_name)
+
+        # --- ADD DEBUG LOGGING HERE ---
+        logger.debug(f"Final code content for {manim_class_name} BEFORE saving to file (verify imports):\nValidated Code Start\n--------------------\n{validated_code}\n------------------\nValidated Code End")
+        # --- END DEBUG LOGGING ---
 
         # Save the generated Python script
         script_file_name = f"scene_{scene_number:02d}_{sane_scene_title}.py"
         script_file_path = os.path.join(self.output_script_dir, script_file_name)
         try:
             with open(script_file_path, "w") as f:
-                f.write(final_code)
+                f.write(validated_code)
             logger.info(f"Manim script for scene '{scene_title}' saved to: {script_file_path}")
         except IOError as e:
             logger.error(f"Failed to write Manim script to {script_file_path}: {e}")
@@ -411,8 +410,8 @@ class VisualArchitect:
                 f.write(f"## Prompt Sent to LLM:\\n\\n") # We'll write the user-focused part, not the whole guide
                 f.write(f"### User Request Part of Prompt:\\n```text\\n{prompt}\\n```\\n\\n")
                 f.write(f"### Note: The full prompt included the Manim v0.19.0 API Guide.\\n\\n")
-                f.write(f"## Raw LLM Response:\\n\\n```python\\n{generated_code}\\n```\\n\\n")
-                f.write(f"## Cleaned & Validated Code ({script_file_name}):\\n\\n```python\\n{final_code}\\n```\\n")
+                f.write(f"## Raw LLM Response:\\n\\n```python\\n{llm_response_content}\\n```\\n\\n")
+                f.write(f"## Cleaned & Validated Code ({script_file_name}):\\n\\n```python\\n{validated_code}\\n```\\n")
             logger.info(f"Visual Architect debug MD for '{scene_title}' saved to {md_output_path}")
         except IOError as e:
             logger.warning(f"Failed to write debug MD file to {md_output_path}: {e}")

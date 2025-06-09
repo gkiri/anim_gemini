@@ -8,8 +8,7 @@
 {"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 6 : Partial movie file written in <>"}
 {"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 7 : Partial movie file written in <>"}
 {"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 8 : Partial movie file written in <>"}
-{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 9 : Partial movie file written in <>"}
 {"levelname": "INFO", "module": "scene_file_writer", "message": "Combining to Movie file."}
 {"levelname": "INFO", "module": "scene_file_writer", "message": "\nFile ready at <>\n"}
-{"levelname": "INFO", "module": "scene", "message": "Rendered Scene2Scene_2_Topic__NonCooperation_Movement\nPlayed 10 animations"}
+{"levelname": "INFO", "module": "scene", "message": "Rendered Scene2Scene_2_Topic__NonCooperation_Movement\nPlayed 9 animations"}
 {"levelname": "INFO", "module": "file_ops", "message": "Previewed File at: '/root/manim_gemini/anim_gemini/outputs/generated_content/videos/scene_02_Scene_2_Topic__NonCooperation_Movement/480p15/Scene2Scene_2_Topic__NonCooperation_Movement.mp4'"}
