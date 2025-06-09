@@ -374,6 +374,11 @@ class VisualArchitect:
                     "HTTP-Referer": config.OPENROUTER_SITE_URL,
                     "X-Title": config.OPENROUTER_APP_NAME,
                     # "Reasoning-Effort": config.LLM_DEFAULT_REASONING_EFFORT # If supported
+                },
+                # Provider specification from config
+                provider={
+                    "order": config.OPENROUTER_PROVIDER_ORDER,
+                    "allow_fallbacks": config.OPENROUTER_ALLOW_FALLBACKS
                 }
             )
             llm_response_content = response.choices[0].message.content

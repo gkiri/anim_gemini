@@ -38,6 +38,10 @@ if not OPENROUTER_API_KEY:
 LLM_DEFAULT_TEMPERATURE = float(os.getenv("LLM_DEFAULT_TEMPERATURE", "0.8"))
 LLM_DEFAULT_REASONING_EFFORT = os.getenv("LLM_DEFAULT_REASONING_EFFORT", "low")
 
+# OpenRouter Provider settings
+OPENROUTER_PROVIDER_ORDER = os.getenv("OPENROUTER_PROVIDER_ORDER", "groq").split(",")
+OPENROUTER_ALLOW_FALLBACKS = os.getenv("OPENROUTER_ALLOW_FALLBACKS", "false").lower() == "true"
+
 # Path for Visual Architect Prompt Template
 # This path is relative to APP_BASE_DIR/project_drishti/
 # So, effectively APP_BASE_DIR/project_drishti/prompts/visual_architect_prompt_template.txt
