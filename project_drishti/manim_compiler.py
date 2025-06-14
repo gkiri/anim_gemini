@@ -28,11 +28,12 @@ Dependencies: Manim (ensure it's installed in the environment)
 
 from manim import *
 import numpy as np # Often useful
-from project_drishti.manim_layout_utils import * # Import your layout utils
+from anim_gemini.layout_utils import *  # Correct project layout utils
 import json
 import os
 import sys
 from pathlib import Path
+from project_drishti import config
 
 # Manim is an external dependency. This script generates Manim code,
 # but doesn't run it directly here (that's for a later stage).
@@ -42,8 +43,12 @@ class ManimCompiler:
         """
         Initializes the ManimCompiler.
         """
-        self.output_dir_manim_scripts = "outputs/manim_compiler/manim_scenes"
-        self.output_dir_debug_md = "outputs/manim_compiler"
+        # All generated scene scripts should end up in the canonical Manim scripts directory so
+        # that downstream components (validator, renderer) only have to look in one place.
+        self.output_dir_manim_scripts = config.MANIM_SCRIPTS_DIR
+
+        # Debug markdown files live under the common output root to avoid a second tree at workspace root.
+        self.output_dir_debug_md = os.path.join(config.COMMON_OUTPUT_DIR, "manim_compiler")
         os.makedirs(self.output_dir_manim_scripts, exist_ok=True)
         os.makedirs(self.output_dir_debug_md, exist_ok=True)
 
@@ -65,8 +70,8 @@ class ManimCompiler:
             "TOP_CENTER": {"zone": "TITLE_AREA", "target_width_ratio": 0.9, "font_size": 48, "max_font_size": 60},
             "MIDDLE_CENTER": {"zone": "MAIN_CONTENT_AREA", "target_width_ratio": 0.8},
             "BOTTOM_CENTER": {"zone": "NARRATION_AREA", "target_width_ratio": 0.9, "font_size": 28, "max_font_size": 36},
-            "TOP_LEFT": {"zone": "MAIN_CONTENT_AREA", "align_to_corner": UL, "target_width_ratio": 0.4}, # Example: use a corner of main
-            "BOTTOM_LEFT": {"zone": "MAIN_CONTENT_AREA", "align_to_corner": DL, "target_width_ratio": 0.4},
+            "TOP_LEFT": {"zone": "MAIN_CONTENT_AREA", "align_to_corner": "UL", "target_width_ratio": 0.4}, # Use corner shorthand
+            "BOTTOM_LEFT": {"zone": "MAIN_CONTENT_AREA", "align_to_corner": "DL", "target_width_ratio": 0.4},
             "CENTER_LEFT": {"zone": "LEFT_HALF", "sub_zone_focus": "center", "target_width_ratio": 0.8},
             "CENTER_RIGHT": {"zone": "RIGHT_HALF", "sub_zone_focus": "center", "target_width_ratio": 0.8},
             # More specific tags for main content area parts
@@ -127,7 +132,7 @@ class ManimCompiler:
             "    sys.path.insert(0, str(project_root_for_import))",
             "",
             "from manim import *",
-            "from anim_gemini.project_drishti.manim_layout_utils import *", # Corrected import
+            "from anim_gemini.layout_utils import *",  # corrected import path
             "import numpy as np",
             "",
             f"class {class_name}(Scene):",
@@ -205,19 +210,12 @@ class ManimCompiler:
                                                   min_font_size={min_font_size}{text_kwargs_str})''')
             
             elif elem_type == "icon":
-                icon_name = element.get("name", "default_icon.svg")
-                mobject_creation_lines.append(f'''        # Placeholder for Icon: {icon_name} for element {elem_id}''')
-                mobject_creation_lines.append(f'''        # Attempting to load icon, will fallback to text if not found.''')
-                mobject_creation_lines.append(f'''        try:''')
-                mobject_creation_lines.append(f'''            {elem_id} = SVGMobject("assets/{icon_name}")''')
-                mobject_creation_lines.append(f'''            {elem_id}.scale_to_fit_width({elem_target_width}*0.3) # Example scale, adjust as needed''') # Icons usually smaller
-                mobject_creation_lines.append(f'''            {elem_id}.move_to(get_zone_center("{zone_name}"))''')
-                # Check if icon height is too large for the zone after width scaling
-                mobject_creation_lines.append(f'''            if {elem_id}.height > {_zone_height} * 0.8:''')
-                mobject_creation_lines.append(f'''                {elem_id}.scale_to_fit_height({_zone_height} * 0.8)''')
-                mobject_creation_lines.append(f'''        except Exception as e:''')
-                mobject_creation_lines.append(f'''            print(f"Warning: Could not load SVG assets/{icon_name} for {elem_id}: {{e}}")''')
-                mobject_creation_lines.append(f'''            {elem_id} = create_smart_text("Icon: {icon_name} (Not Found)", zone_name="{zone_name}", target_zone_width={elem_target_width}, font_size=20, color=RED)''')
+                # Render a neutral placeholder so the pipeline never fails on missing SVG files
+                icon_label = element.get("name", "Icon")
+                mobject_creation_lines.append(
+                    f"        {elem_id} = create_smart_text(\"🖼  {icon_label}\", "
+                    f"zone_name=\"{zone_name}\", target_zone_width={elem_target_width}, font_size=32, color=LIGHT_GREY)"
+                )
 
             elif elem_type == "shape":
                 shape_type = element.get("shape_type", "Rectangle").capitalize()
@@ -265,8 +263,8 @@ class ManimCompiler:
             
             # If layout_prefs specify a sub-area (e.g. corner)
             align_to_corner = layout_prefs.get("align_to_corner")
-            if align_to_corner: # This is a Manim direction like UL, DR
-                 mobject_creation_lines.append(f'        {elem_id}.align_to(get_zone_rect("{zone_name}"), {str(align_to_corner).split(".")[-1]}) # Align to corner of zone rect')
+            if align_to_corner is not None:
+                 mobject_creation_lines.append(f'        {elem_id}.align_to(get_zone_rect("{zone_name}"), {align_to_corner}) # Align to corner of zone rect')
 
         manim_code_lines.extend(mobject_creation_lines)
         manim_code_lines.append("")
@@ -281,13 +279,18 @@ class ManimCompiler:
         # For now, we play sequentially respecting delays.
 
         for anim in sorted_animations:
-            action = anim.get("action", "FadeIn").capitalize()
+            # Normalise the action name so that different casings or snake-case variants map
+            # to the same canonical keyword.  Using lower-case for comparison avoids the bug
+            # where e.g. "FadeIn" became "Fadein" after `.capitalize()` and was therefore
+            # treated as an unknown action.
+            raw_action = anim.get("action", "FadeIn")
+            action_key = raw_action.replace("_", "").lower()  # e.g. 'Fade_In' ➔ 'fadein'
             target_id = anim.get("target")
             duration = anim.get("duration", 1)
             delay = anim.get("delay", 0) # Absolute start time for this animation
 
             if target_id not in mobjects:
-                animation_lines.append(f"        # Animation target '{target_id}' not found, skipping: {action}")
+                animation_lines.append(f"        # Animation target '{target_id}' not found, skipping: {raw_action}")
                 continue
 
             mobject_var_name = mobjects[target_id]
@@ -298,27 +301,32 @@ class ManimCompiler:
                 animation_lines.append(f"        self.wait({wait_duration:.2f})")
             
             anim_str = ""
-            if action == "FadeIn":
+            # ------------------------------------------------------------
+            # Map canonical action keyword ➔ Manim Animation call
+            # ------------------------------------------------------------
+            if action_key in ("fadein",):
                 anim_str = f"FadeIn({mobject_var_name}"
-            elif action == "FadeOut":
+            elif action_key in ("fadeout",):
                 anim_str = f"FadeOut({mobject_var_name}"
-            elif action == "Write":
+            elif action_key in ("write",):
                 anim_str = f"Write({mobject_var_name}"
-            elif action == "Create":
+            elif action_key in ("create",):
                 anim_str = f"Create({mobject_var_name}"
-            elif action == "Scale":
+            elif action_key in ("drawborderthenfill", "draw",):
+                anim_str = f"DrawBorderThenFill({mobject_var_name}"
+            elif action_key in ("scale",):
                 scale_factor = anim.get("scale_factor", 1.5)
                 # For scale, it's mobject.animate.scale()
                 animation_lines.append(f"        self.play({mobject_var_name}.animate.scale({scale_factor}), duration={duration})")
-            elif action == "MoveTo": # Example: MoveTo a point or another mobject's position
+            elif action_key == "moveto":  # Example: MoveTo a point or another mobject's position
                 target_pos_tag = anim.get("target_position_tag", "MIDDLE_CENTER") # SDL needs to specify this
                 target_pos_layout = self._map_sdl_position_to_zone_and_align(target_pos_tag)
                 target_zone = target_pos_layout.get("zone", "MAIN_CONTENT_AREA")
-                animation_lines.append(f"        self.play({mobject_var_name}.animate.move_to(get_zone_center("{target_zone}")), duration={duration})")
+                animation_lines.append(f"        self.play({mobject_var_name}.animate.move_to(get_zone_center('{target_zone}')), duration={duration})")
 
             # Add more animation handlers here
             else:
-                animation_lines.append(f"        # Unknown animation action: {action} for {mobject_var_name}")
+                animation_lines.append(f"        # Unknown animation action: {raw_action} for {mobject_var_name}")
 
             if anim_str: # For animations that are direct playables
                  # Check for additional animation params like shift, run_time etc from SDL.
@@ -368,6 +376,23 @@ class ManimCompiler:
             f.write(manim_script_content)
             f.write("\n```\n")
         print(f"Compilation debug MD saved to {md_file_path}")
+        
+        # ------------------------------------------------------------
+        # QUICK SYNTAX CHECK – catches obvious LLM / compiler mistakes
+        # ------------------------------------------------------------
+        try:
+            compile(manim_script_content, py_file_name, "exec")
+        except SyntaxError as e:
+            dbg_file = os.path.join(self.output_dir_debug_md, f"syntax_error_{class_name}.md")
+            with open(dbg_file, "w") as fdbg:
+                fdbg.write(f"# Syntax error in {class_name}\n\n```")
+                fdbg.write(str(e))
+                fdbg.write("```\n\n## Offending code:\n\n```python\n")
+                fdbg.write(manim_script_content)
+                fdbg.write("\n```\n")
+            print(f"SyntaxError while compiling {py_file_name}: {e}. Debug written to {dbg_file}")
+            # Bubble up empty result so upstream validation will fail fast
+            return "", py_file_name
         
         return manim_script_content, py_file_name
 

@@ -19,6 +19,7 @@ Key functionalities:
 
 import json
 import os # For creating output directories
+from project_drishti import config
 
 # Placeholder for a more sophisticated AI model call in the future
 # For now, we'll use a mock implementation.
@@ -32,7 +33,8 @@ class DidacticScripter:
                               (Currently a placeholder).
         """
         self.model_name = model_name
-        self.output_dir = "outputs/didactic_scripter"
+        # Write all artefacts inside the single project-wide output root to avoid duplication
+        self.output_dir = os.path.join(config.COMMON_OUTPUT_DIR, "didactic_scripter")
         os.makedirs(self.output_dir, exist_ok=True)
 
     def generate_script(self, topic: str, num_scenes: int = 7) -> dict:

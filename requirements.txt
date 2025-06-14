@@ -1,4 +1,5 @@
 manim
 openai
 python-dotenv
-ffmpeg-python 
+ffmpeg-python
+pydantic 

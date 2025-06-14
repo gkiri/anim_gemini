@@ -68,7 +68,8 @@ class ManimRenderer:
         script_filename_no_ext = os.path.splitext(os.path.basename(script_path))[0]
         
         quality_map = {
-            "-pql": "480p15",
+            "-ql": "480p15",   # low quality, no preview
+            "-pql": "480p15",  # low quality with preview
             "-pqm": "720p30",
             "-pqh": "1080p60",
             "-pqk": "2160p60",

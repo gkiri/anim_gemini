@@ -16,6 +16,9 @@ from project_drishti.didactic_scripter import DidacticScripter
 from project_drishti.visual_architect import VisualArchitect
 from project_drishti.manim_renderer import ManimRenderer
 from project_drishti import config # To check for API key and use settings
+from project_drishti.scene_planner import ScenePlanner
+from project_drishti.manim_compiler import ManimCompiler
+from project_drishti.validator import validate_script
 
 # Setup basic logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -53,6 +56,90 @@ def run_pipeline(topic: str, num_scenes_override: int | None = None):
     logger.info(f"Successfully generated didactic script with {len(structured_script['scenes'])} scenes.")
     logger.debug(f"Didactic Script Content:\n{json.dumps(structured_script, indent=4)}")
     # The script is also saved to a .md file by the scripter itself.
+
+    # ------------------------------------------------------------------
+    # Choose which generation strategy to use
+    # ------------------------------------------------------------------
+    use_enhanced_pipeline: bool = True  # flip to False to fall back to legacy VisualArchitect path
+
+    if use_enhanced_pipeline:
+        # ==============================================================
+        # Enhanced Stage 2: ScenePlanner – SDL generation via LLM/stub
+        # ==============================================================
+        logger.info("--- Stage 2 (Enhanced): Generating Scene SDLs ---")
+        planner = ScenePlanner()
+
+        async def gen_all_sdls():
+            sdls: list[dict] = []
+            semaphore = asyncio.Semaphore(5)
+
+            async def sem_task(scene_d):
+                async with semaphore:
+                    return await planner.async_generate_sdl_for_scene(scene_d)
+
+            tasks = [asyncio.create_task(sem_task(scene)) for scene in structured_script.get("scenes", [])]
+            for t in asyncio.as_completed(tasks):
+                sdls.append(await t)
+            return sdls
+
+        scene_sdls = asyncio.run(gen_all_sdls())
+        scene_sdls = [s for s in scene_sdls if s]
+
+        if not scene_sdls:
+            logger.error("Enhanced pipeline: ScenePlanner produced no SDLs. Exiting.")
+            return
+
+        # ==============================================================
+        # Enhanced Stage 3: Deterministic compilation to Manim scripts
+        # ==============================================================
+        logger.info("--- Stage 3 (Enhanced): Compiling SDLs to Manim scripts ---")
+        compiler = ManimCompiler()
+        compiled_scripts: list[tuple[str, str]] = []  # (script_path, scene_class_name)
+
+        for sdl in scene_sdls:
+            script_content, py_file_name = compiler.compile_scene_to_manim(sdl)
+            script_path = os.path.abspath(os.path.join(compiler.output_dir_manim_scripts, py_file_name))
+            scene_class_name = os.path.splitext(py_file_name)[0]
+
+            # ------------------------------------------------------
+            # Enhanced Stage 4: Fast validation
+            # ------------------------------------------------------
+            if not validate_script(script_path, scene_class_name):
+                logger.error(f"Validation failed for script {py_file_name}. Skipping render.")
+                continue
+
+            compiled_scripts.append((script_path, scene_class_name))
+
+        if not compiled_scripts:
+            logger.error("No valid scripts after compilation & validation. Pipeline terminates.")
+            return
+
+        # ==============================================================
+        # Enhanced Stage 5: Render via ManimRenderer
+        # ==============================================================
+        logger.info("--- Stage 5: Rendering validated scripts into videos ---")
+        renderer = ManimRenderer()
+        rendered_video_paths: list[str] = []
+
+        for script_path, scene_class_name in compiled_scripts:
+            logger.info(f"Rendering script: {script_path}, Scene class: {scene_class_name}")
+            vid_path = renderer.render_scene(script_path, scene_class_name)
+            if vid_path:
+                rendered_video_paths.append(vid_path)
+
+        if rendered_video_paths:
+            logger.info(f"Pipeline complete! Rendered {len(rendered_video_paths)} videos:")
+            for p in rendered_video_paths:
+                logger.info(f"- {p}")
+        else:
+            logger.error("Rendering failed for all scripts.")
+
+        logger.info("--- Enhanced Project Drishti Pipeline Finished ---")
+        return  # do not fall through to legacy path
+
+    # ------------------------------------------------------------------
+    # LEGACY path – VisualArchitect single-shot Manim generation
+    # ------------------------------------------------------------------
 
     # --- Stage 2: Visual Architect (LLM Manim Code Generation) --- 
     logger.info("--- Stage 2: Generating Manim Code via LLM for each scene (async) ---")
@@ -133,4 +220,4 @@ if __name__ == "__main__":
     logger.info("=================================================================")
     logger.info(f"Please check logs above and output files in the '{config.GENERATED_CONTENT_DIR}' directory.")
     logger.info(f"Specifically, scripts in '{config.MANIM_SCRIPTS_DIR}' and videos in '{config.MANIM_VIDEO_DIR}'.")
-    logger.info("Debug .md files for script generation are in 'outputs/didactic_scripter' and 'outputs/visual_architect'.") 
+    logger.info(f"Debug .md files for script generation are in '{config.COMMON_OUTPUT_DIR}/didactic_scripter' and '{config.COMMON_OUTPUT_DIR}/visual_architect'.") 

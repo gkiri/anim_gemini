@@ -66,7 +66,8 @@ class VisualArchitect:
                 logger.warning(f"Failed to initialise AsyncOpenAI client – async generation unavailable: {e}")
                 self.async_client = None
         self.output_script_dir = config.MANIM_SCRIPTS_DIR
-        self.output_md_dir = "outputs/visual_architect" # For debug MD files
+        # All debug markdown files live under the common outputs directory to keep things tidy
+        self.output_md_dir = os.path.join(config.COMMON_OUTPUT_DIR, "visual_architect")
         os.makedirs(self.output_script_dir, exist_ok=True)
         os.makedirs(self.output_md_dir, exist_ok=True)
 
@@ -282,6 +283,22 @@ class VisualArchitect:
         
         return code.strip() # Ensure stripping at the end
 
+    def _compile_test(self, code: str) -> tuple[bool, str]:
+        """Quick syntax validation of generated code using py_compile. Returns (success, error_msg)."""
+        import tempfile, py_compile, os
+        tmp_path = None
+        try:
+            with tempfile.NamedTemporaryFile('w', suffix='.py', delete=False) as tmp:
+                tmp.write(code)
+                tmp_path = tmp.name
+            py_compile.compile(tmp_path, doraise=True)
+            return True, ""
+        except py_compile.PyCompileError as e:
+            return False, str(e)
+        finally:
+            if tmp_path and os.path.exists(tmp_path):
+                os.remove(tmp_path)
+
     async def async_generate_manim_code_for_scene(self, scene_data: dict, topic_title: str) -> tuple[str | None, str | None]:
         """
         Asynchronous variant of `generate_manim_code_for_scene` using `AsyncOpenAI` client so that
@@ -406,6 +423,33 @@ class VisualArchitect:
         cleaned_code = self._clean_generated_code(llm_response_content)
         validated_code = self._validate_and_fix_manim_code(cleaned_code, manim_class_name)
 
+        # --- Self-healing compile check (single retry) ---
+        compile_ok, compile_err = self._compile_test(validated_code)
+        if not compile_ok:
+            logger.warning(f"[Async] Initial compile failed for scene '{scene_title}'. Attempting automatic fix.")
+            fix_prompt = full_prompt + (
+                "\n\nThe previous code failed to compile with the following error:\n```\n" + compile_err + "\n```\n" +
+                "Please return corrected code following ALL original constraints."
+            )
+            try:
+                response_fix = await self.async_client.chat.completions.create(
+                    model=config.OPENROUTER_MODEL_NAME,
+                    messages=[{"role": "user", "content": fix_prompt}],
+                    temperature=config.LLM_DEFAULT_TEMPERATURE,
+                    extra_headers={
+                        "HTTP-Referer": config.OPENROUTER_SITE_URL,
+                        "X-Title": config.OPENROUTER_APP_NAME,
+                    },
+                )
+                llm_response_content = response_fix.choices[0].message.content
+                cleaned_code = self._clean_generated_code(llm_response_content)
+                validated_code = self._validate_and_fix_manim_code(cleaned_code, manim_class_name)
+                compile_ok, compile_err = self._compile_test(validated_code)
+                if not compile_ok:
+                    logger.error(f"[Async] Compile still failing after auto-fix. Error: {compile_err}")
+            except Exception as e:
+                logger.error(f"[Async] Error during self-heal LLM call: {e}")
+
         # --- Save files (blocking but small, ok in loop) ---
         script_file_name = f"scene_{scene_number:02d}_{sane_scene_title}.py"
         script_file_path = os.path.join(self.output_script_dir, script_file_name)
@@ -476,7 +520,7 @@ if __name__ == '__main__':
         if script_path and class_name:
             print(f"\nSuccessfully generated Manim script: {script_path}")
             print(f"Manim class name: {class_name}")
-            print("Please review the generated script and the .md file in outputs/visual_architect/")
+            print(f"Please review the generated script and the .md file in {self.output_md_dir}/")
             # Try reading the file content
             try:
                 with open(script_path, 'r') as f_read:

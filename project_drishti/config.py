@@ -22,7 +22,12 @@ MANIM_VIDEO_DIR = os.path.join(GENERATED_CONTENT_DIR, "videos")
 MANIM_LOG_DIR = os.path.join(GENERATED_CONTENT_DIR, "logs")
 MANIM_IMAGE_DIR = os.path.join(GENERATED_CONTENT_DIR, "images")
 
-MANIM_QUALITY_FLAG = os.getenv("MANIM_QUALITY_FLAG", "-pql")
+# Manim quality / preview flag
+# The default previously used "-pql" (preview & quality low).  On most servers there is no GUI so
+# the preview step fails with repeated `xdg-open` warnings.  We therefore switch the sane default
+# to "-ql" (quality low, **no** preview).  Set the env-var `MANIM_QUALITY_FLAG` to "-pql" locally
+# if you actually want automatic video preview.
+MANIM_QUALITY_FLAG = os.getenv("MANIM_QUALITY_FLAG", "-ql")
 
 # Ensure Manim output directories exist
 os.makedirs(MANIM_SCRIPTS_DIR, exist_ok=True)
@@ -52,6 +57,12 @@ if not os.path.exists(VISUAL_ARCHITECT_PROMPT_TEMPLATE_PATH):
     print(f"CRITICAL ERROR: Visual Architect prompt template not found at expected path: {VISUAL_ARCHITECT_PROMPT_TEMPLATE_PATH}")
     print(f"Please ensure the file exists. Calculated APP_BASE_DIR: {APP_BASE_DIR}")
     # Optionally, raise an exception here to halt execution if it's critical
+
+# Directory where *all* non-media debug artefacts (markdown, temp logs, etc.) should be written.
+# Having a single base avoids the accidental creation of a second `outputs/` folder at the workspace root.
+COMMON_OUTPUT_DIR = os.path.join(APP_BASE_DIR, "outputs")
+# Ensure it exists
+os.makedirs(COMMON_OUTPUT_DIR, exist_ok=True)
 
 # You can add more configurations here as needed
 # For example, default reasoning effort, temperature for LLM calls

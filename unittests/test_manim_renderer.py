@@ -29,7 +29,7 @@ class TestManimRenderer(unittest.TestCase):
 
         # Expected video path based on ManimRenderer logic
         script_filename_no_ext = os.path.splitext(os.path.basename(self.dummy_script_path))[0]
-        quality_map = {"-pql": "480p15", "-pqm": "720p30", "-pqh": "1080p60", "-pqk": "2160p60"}
+        quality_map = {"-ql": "480p15", "-pql": "480p15", "-pqm": "720p30", "-pqh": "1080p60", "-pqk": "2160p60"}
         quality_folder_name = quality_map.get(config.MANIM_QUALITY_FLAG, "1080p60")
         self.expected_video_relative_path = os.path.join(
             "videos", script_filename_no_ext, quality_folder_name, f"{self.dummy_class_name}.mp4"
