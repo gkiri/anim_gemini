@@ -1,201 +1,148 @@
 from manim import *
 from anim_gemini.layout_utils import *  # Ensured by VisualArchitect validator
+from anim_gemini.colors import *  # Predefined project color palette
 import numpy as np
+import logging
+
+logger = logging.getLogger(__name__)
+
+def stack_mobjects_vertically(mobjects_list, center_point=None, buff=0.5):
+    if not mobjects_list:
+        return VGroup()
+    group = VGroup(*mobjects_list).arrange(DOWN, buff=buff)
+    if center_point is not None:
+        group.move_to(center_point)
+    return group
+
+def get_zone_center(zone_name: str):
+    logger.warning(f"get_zone_center called for '{zone_name}'. It currently returns ORIGIN (0,0,0). "
+                   f"Define actual zone coordinates in this boilerplate if specific positioning is critical.")
+    return ORIGIN
 
 class Scene1Scene_1_Topic__NonCooperation_Movement(Scene):
     def construct(self):
-        # Create title using smart text layout
-        title = create_smart_text(
-            "Non-Cooperation Movement",
-            zone_name="TITLE_AREA",
-            font_size=48,
-            color=YELLOW
+        # Create title using smart text (placeholder for actual layout_utils function)
+        title = Text("Non-Cooperation Movement", font_size=48, color=PROJ_GOLD)
+        title.to_edge(UP)
+        
+        # Visual metaphor: British flag being challenged by growing Indian symbols
+        # Create Union Jack representation
+        union_jack = VGroup(
+            Rectangle(width=4, height=2.4, color=PROJ_UNION_JACK_BLUE, fill_opacity=1),
+            Rectangle(width=4, height=0.8, color=P_WHITE, fill_opacity=1),
+            Rectangle(width=0.8, height=2.4, color=P_WHITE, fill_opacity=1),
+            Polygon([-2,1.2,0], [2,1.2,0], [0,0.4,0], [0,-1.2,0], 
+                    color=PROJ_RED_D, fill_opacity=1),
+            Polygon([-2,-1.2,0], [2,-1.2,0], [0,-0.4,0], [0,1.2,0], 
+                    color=PROJ_RED_D, fill_opacity=1)
         )
+        union_jack.move_to(ORIGIN)
+        
+        # Create Indian symbols (charkha - spinning wheel)
+        charkha = VGroup(
+            Circle(radius=0.8, color=PROJ_TAN, stroke_width=8),
+            Circle(radius=0.2, color=PROJ_DARK_BROWN, fill_opacity=1),
+            Line([-0.8,0,0], [0.8,0,0], color=PROJ_DARK_BROWN, stroke_width=6),
+            Line([0,-0.8,0], [0,0.8,0], color=PROJ_DARK_BROWN, stroke_width=6)
+        )
+        charkha.scale(0.5).shift(LEFT*3 + DOWN)
+        
+        # Create protest symbols (raised fists)
+        def create_fist(pos):
+            fist = VGroup(
+                Circle(radius=0.2, color=PROJ_SAFFRON, fill_opacity=1),
+                Polygon([-0.2,0.2,0], [0.2,0.2,0], [0.1,0.4,0], [-0.1,0.4,0], 
+                        color=PROJ_SAFFRON, fill_opacity=1),
+                Line([0,0.4,0], [0,0.7,0], color=PROJ_SAFFRON, stroke_width=8)
+            )
+            fist.move_to(pos)
+            return fist
+        
+        fists = VGroup(*[create_fist([x, y, 0]) for x in np.linspace(-4,4,5) for y in np.linspace(-2,2,3)])
+        fists.set_opacity(0)  # Start invisible
+        
+        # Animation sequence
         self.play(Write(title))
         self.wait(0.5)
         
-        # Get main content area center
-        main_center = get_zone_center("MAIN_CONTENT_AREA")
-        
-        # Create symbolic elements
-        # British Crown representation
-        crown_base = Rectangle(width=1.5, height=0.3, color=GOLD, fill_opacity=1)
-        crown_points = [
-            np.array([-0.7, 0.15, 0]),
-            np.array([-0.5, 0.5, 0]),
-            np.array([0, 0.7, 0]),
-            np.array([0.5, 0.5, 0]),
-            np.array([0.7, 0.15, 0])
-        ]
-        crown_top = Polygon(*crown_points, color=GOLD, fill_opacity=1)
-        crown = VGroup(crown_base, crown_top).scale(0.8)
-        
-        # Chains representing oppression
-        chain_links = VGroup()
-        for i in range(5):
-            link = Annulus(inner_radius=0.1, outer_radius=0.15, color=GREY, fill_opacity=1)
-            link.shift(i * 0.3 * RIGHT)
-            chain_links.add(link)
-        
-        # Gandhi's spinning wheel (Charkha)
-        wheel = Circle(radius=0.5, color=BROWN, stroke_width=4)
-        spindle = Line(start=[-0.5, 0, 0], end=[0.5, 0, 0], color=BROWN, stroke_width=3)
-        charkha = VGroup(wheel, spindle)
-        
-        # People representation
-        person = VGroup(
-            Circle(radius=0.2, color=WHITE, fill_opacity=1),
-            Line(start=[0, -0.2, 0], end=[0, -0.8, 0], color=WHITE),
-            Line(start=[-0.2, -0.4, 0], end=[0.2, -0.4, 0], color=WHITE),
-            Line(start=[0, -0.8, 0], end=[-0.2, -1.2, 0], color=WHITE),
-            Line(start=[0, -0.8, 0], end=[0.2, -1.2, 0], color=WHITE)
-        )
-        
-        # Position elements
-        crown.move_to(main_center + LEFT*3 + UP)
-        chain_links.next_to(crown, DOWN, buff=0.5)
-        charkha.move_to(main_center)
-        person.move_to(main_center + RIGHT*3 + DOWN*0.5)
-        
-        # Animate crown and chains appearing
+        # Create British flag
         self.play(
-            DrawBorderThenFill(crown),
-            Create(chain_links),
+            LaggedStart(
+                Create(union_jack[0]),
+                Create(union_jack[1]),
+                Create(union_jack[2]),
+                lag_ratio=0.2
+            ),
+            run_time=2
+        )
+        self.play(
+            DrawBorderThenFill(union_jack[3]),
+            DrawBorderThenFill(union_jack[4]),
             run_time=1.5
         )
-        self.wait(0.5)
-        
-        # Animate spinning wheel appearing
-        self.play(GrowFromCenter(charkha))
-        self.play(
-            Rotate(charkha, angle=2*PI, run_time=2, rate_func=linear),
-            ApplyWave(chain_links)
-        )
-        self.wait(0.5)
-        
-        # Animate person appearing
-        self.play(FadeIn(person))
-        
-        # Create breaking chain animation
-        broken_chain = chain_links.copy()
-        self.play(
-            broken_chain.animate.shift(DOWN*0.5),
-            broken_chain.animate.rotate(PI/4, about_point=broken_chain.get_center()),
-            FadeOut(chain_links)
-        )
-        
-        # Create movement arrows
-        arrows = VGroup()
-        arrow_points = [
-            (charkha.get_center(), person.get_center()),
-            (charkha.get_center() + UP, person.get_center() + UP),
-            (charkha.get_center() + DOWN, person.get_center() + DOWN)
-        ]
-        
-        for start, end in arrow_points:
-            arrow = Arrow(
-                start=start,
-                end=end,
-                buff=0.1,
-                color=GREEN,
-                stroke_width=4,
-                max_tip_length_to_length_ratio=0.2
-            )
-            arrows.add(arrow)
-        
-        # Animate arrows spreading
-        self.play(LaggedStart(
-            *[GrowArrow(arrow) for arrow in arrows],
-            lag_ratio=0.3
-        ))
         self.wait(1)
         
-        # Create growing movement effect
-        movement_circles = VGroup()
-        for i in range(1, 4):
-            circle = Circle(
-                radius=i,
-                color=GREEN,
-                stroke_width=2,
-                fill_opacity=0.1
-            )
-            circle.move_to(charkha.get_center())
-            movement_circles.add(circle)
-        
+        # Introduce charkha (symbol of self-reliance)
         self.play(
-            Create(movement_circles),
-            ApplyMethod(person.animate.shift(UP)),
-            run_time=2
-        )
-        
-        # Transform crown into ash (symbolizing decline of British authority)
-        ash_particles = VGroup()
-        for _ in range(20):
-            dot = Dot(
-                point=crown.get_center(),
-                radius=0.05 * np.random.random(),
-                color=GREY,
-                fill_opacity=0.7
-            )
-            ash_particles.add(dot)
-        
-        self.play(
-            Transform(crown, ash_particles),
-            run_time=2
-        )
-        
-        # Final composition - fade out elements except movement
-        self.play(
-            FadeOut(arrows),
-            FadeOut(broken_chain),
-            FadeOut(ash_particles),
-            movement_circles.animate.set_fill(opacity=0.3),
-            person.animate.scale(1.2).set_color(GREEN),
-            charkha.animate.scale(1.2)
-        )
-        
-        # Create Indian flag emerging
-        flag_width = 3
-        flag_height = 2
-        saffron = Rectangle(width=flag_width, height=flag_height/3, color="#FF9933", fill_opacity=1)
-        white = Rectangle(width=flag_width, height=flag_height/3, color=WHITE, fill_opacity=1)
-        green = Rectangle(width=flag_width, height=flag_height/3, color="#138808", fill_opacity=1)
-        
-        white.next_to(saffron, DOWN, buff=0)
-        green.next_to(white, DOWN, buff=0)
-        flag = VGroup(saffron, white, green)
-        
-        # Ashoka Chakra
-        chakra = Circle(radius=0.3, color="#000080", stroke_width=2)
-        spokes = VGroup()
-        for i in range(24):
-            angle = i * PI/12
-            spoke = Line(
-                start=chakra.get_center(),
-                end=chakra.get_center() + 0.3 * np.array([np.cos(angle), np.sin(angle), 0]),
-                color="#000080",
-                stroke_width=1
-            )
-            spokes.add(spoke)
-        chakra_group = VGroup(chakra, spokes)
-        chakra_group.move_to(white.get_center())
-        
-        flag.add(chakra_group)
-        flag.move_to(main_center)
-        
-        # Final transformation
-        self.play(
-            Transform(movement_circles, flag),
-            FadeOut(person),
-            FadeOut(charkha),
-            run_time=2
-        )
-        self.play(Indicate(flag))
-        self.wait(2)
-        
-        # Cleanup
-        self.play(
-            FadeOut(title),
-            FadeOut(flag)
+            GrowFromCenter(charkha),
+            Rotate(charkha[3], angle=2*PI, rate_func=linear, run_time=2)
         )
         self.wait(0.5)
+        
+        # Show spread of movement with expanding circles
+        ripple1 = Circle(radius=0.1, color=PROJ_GREEN_C, stroke_width=2)
+        ripple1.move_to(charkha.get_center())
+        ripple2 = ripple1.copy().set_color(PROJ_GREEN_B)
+        ripple3 = ripple1.copy().set_color(PROJ_GREEN_A)
+        
+        self.play(
+            GrowFromCenter(ripple1),
+            ripple1.animate.scale(10).set_opacity(0),
+            run_time=2
+        )
+        self.play(
+            GrowFromCenter(ripple2),
+            ripple2.animate.scale(8).set_opacity(0),
+            run_time=1.5
+        )
+        self.play(
+            GrowFromCenter(ripple3),
+            ripple3.animate.scale(6).set_opacity(0),
+            run_time=1
+        )
+        self.wait(0.5)
+        
+        # Show growing protest (fists appearing)
+        self.play(
+            LaggedStart(
+                *[FadeIn(fist, scale=0.5) for fist in fists],
+                lag_ratio=0.05
+            ),
+            run_time=3
+        )
+        self.wait(1)
+        
+        # Movement challenges the establishment
+        self.play(
+            fists.animate.shift(UP*0.5),
+            Rotate(fists, angle=0.1*PI, rate_func=there_and_back),
+            union_jack.animate.scale(0.7).set_opacity(0.8),
+            run_time=2
+        )
+        self.play(
+            fists.animate.shift(UP*0.3),
+            Rotate(fists, angle=-0.1*PI, rate_func=there_and_back),
+            run_time=2
+        )
+        
+        # Final emphasis on movement strength
+        self.play(
+            fists.animate.set_color(PROJ_RED_C),
+            charkha.animate.scale(1.5).set_color(PROJ_GOLD),
+            run_time=2
+        )
+        self.play(
+            Flash(charkha, color=PROJ_GOLD, flash_radius=1.5),
+            run_time=1.5
+        )
+        self.wait(2)

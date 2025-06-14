@@ -21,8 +21,18 @@ import json
 import os
 import re
 import logging
-from openai import OpenAI # For OpenRouter
+from openai import OpenAI, AsyncOpenAI  # For OpenRouter (sync & async clients)
 from project_drishti import config
+try:
+    # Preferred absolute import when package is discoverable
+    from anim_gemini import colors as project_colors
+except ModuleNotFoundError:  # Fallback to relative import when run inside package dir
+    import sys, pathlib
+    _this_file = pathlib.Path(__file__).resolve()
+    _pkg_root = _this_file.parents[1]  # path to anim_gemini
+    if str(_pkg_root.parent) not in sys.path:
+        sys.path.append(str(_pkg_root.parent))
+    from anim_gemini import colors as project_colors
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -39,10 +49,22 @@ class VisualArchitect:
             # For POC, we might allow it to initialize but generation will fail
             self.client = None
         else:
+            # Synchronous client (existing behaviour)
             self.client = OpenAI(
                 base_url="https://openrouter.ai/api/v1",
                 api_key=config.OPENROUTER_API_KEY,
             )
+
+            # Asynchronous client for concurrent LLM calls
+            try:
+                self.async_client = AsyncOpenAI(
+                    base_url="https://openrouter.ai/api/v1",
+                    api_key=config.OPENROUTER_API_KEY,
+                )
+            except Exception as e:
+                # Fall back gracefully if async client cannot be initialised (e.g. older openai lib)
+                logger.warning(f"Failed to initialise AsyncOpenAI client – async generation unavailable: {e}")
+                self.async_client = None
         self.output_script_dir = config.MANIM_SCRIPTS_DIR
         self.output_md_dir = "outputs/visual_architect" # For debug MD files
         os.makedirs(self.output_script_dir, exist_ok=True)
@@ -156,6 +178,8 @@ class VisualArchitect:
         # Add non-negotiable imports. These will be the definitive imports for the script.
         final_script_lines.append("from manim import *")
         final_script_lines.append("from anim_gemini.layout_utils import *  # Ensured by VisualArchitect validator")
+        # Add project color palette import so that only predefined colors are used
+        final_script_lines.append("from anim_gemini.colors import *  # Predefined project color palette")
         
         # Scan original LLM core code for numpy usage to decide if we need to add its import
         numpy_import_needed = False
@@ -175,6 +199,7 @@ class VisualArchitect:
         # These are the exact strings of imports we already added, to avoid duplication.
         exact_manim_import_str = "from manim import *"
         exact_correct_layout_import_str = "from anim_gemini.layout_utils import *"
+        exact_colors_import_str = "from anim_gemini.colors import *"
         exact_numpy_import_str = "import numpy as np"
 
         for line_content in llm_core_code_lines:
@@ -193,6 +218,11 @@ class VisualArchitect:
             # Check for redundant correct layout import (potentially with varied comments)
             if stripped_line.startswith(exact_correct_layout_import_str.split("#")[0].strip()):
                  logger.debug(f"Validator skipping redundant correct layout_utils import line: '{line_content}'")
+                 continue
+
+            # Skip redundant colors import
+            if stripped_line.startswith(exact_colors_import_str.split("#")[0].strip()):
+                 logger.debug(f"Validator skipping redundant project colors import line: '{line_content}'")
                  continue
 
             if numpy_import_needed and stripped_line == exact_numpy_import_str:
@@ -252,54 +282,51 @@ class VisualArchitect:
         
         return code.strip() # Ensure stripping at the end
 
-    def generate_manim_code_for_scene(self, scene_data: dict, topic_title: str) -> tuple[str | None, str | None]:
+    async def async_generate_manim_code_for_scene(self, scene_data: dict, topic_title: str) -> tuple[str | None, str | None]:
         """
-        Generates Manim Python code for a single scene using an LLM.
+        Asynchronous variant of `generate_manim_code_for_scene` using `AsyncOpenAI` client so that
+        multiple LLM calls can be awaited concurrently.
 
-        Args:
-            scene_data (dict): A dictionary containing 'scene_number', 'title', and 'narration' for the scene.
-            topic_title (str): The overall topic title, for context in prompts.
-
-        Returns:
-            tuple[str | None, str | None]: Path to the generated .py file and the Manim class name, or (None, None) on failure.
+        Returns a tuple (script_file_path, manim_class_name) or (None, None) on failure.
         """
-        if not self.client:
-            logger.error("OpenRouter client not initialized. Cannot generate code.")
-            return None, None
 
+        # If async client is not available fall back to synchronous method in a thread
+        if not self.async_client:
+            logger.warning("AsyncOpenAI client not available – falling back to synchronous generation in a thread.")
+            import asyncio, functools
+            loop = asyncio.get_running_loop()
+            return await loop.run_in_executor(None, functools.partial(self.generate_manim_code_for_scene, scene_data, topic_title))
+
+        # --- Logic duplicated from synchronous method (kept in-sync) ---
         scene_number = scene_data.get("scene_number", 0)
         scene_title = scene_data.get("title", f"UntitledScene{scene_number}")
         narration = scene_data.get("narration", "No narration provided.")
 
-        # Sanitize title for use in filenames and class names
         sane_scene_title = re.sub(r'[^a-zA-Z0-9_]', '', scene_title.replace(" ", "_"))
-        # Ensure it's a valid Python identifier component (though Manim classes are more flexible)
-        if not sane_scene_title or not sane_scene_title[0].isalpha(): 
-            sane_scene_title = f"Scene{sane_scene_title}" 
+        if not sane_scene_title or not sane_scene_title[0].isalpha():
+            sane_scene_title = f"Scene{sane_scene_title}"
 
-        # Manim class name as per user's reference: Scene{section_index + 1}
-        # section_index in user ref is 0-based, scene_number here is 1-based.
-        manim_class_name = f"Scene{scene_number}{sane_scene_title}" # Make it more unique & descriptive
-        # If strictly following `Scene{section_index + 1}` (scene_number is section_index + 1):
-        # manim_class_name = f"Scene{scene_number}"
+        manim_class_name = f"Scene{scene_number}{sane_scene_title}"
 
         prompt = self.prompt_template.format(
             manim_class_name=manim_class_name,
             topic_title=topic_title,
             scene_title=scene_title,
-            narration=narration
-            # Add any other placeholders here if your template uses them
+            narration=narration,
         )
 
-        # Updated Prompt: Informs LLM that helpers ARE PROVIDED.
-        # LLM's responsibility is to generate the "from manim import *" and the Scene class.
         full_prompt = (
             "You are an expert Manim programmer. Your task is to generate a complete, directly executable Manim Community v0.19.0 Python script for a single scene. "
             "The script you generate will have some helper functions and necessary imports (`numpy`, `logging`) prepended to it programmatically. "
-            "Therefore, your generated code MUST start with `from manim import *`.\\n\\n"
+            "Therefore, your generated code MUST start with `from manim import *`.\n\n"
 
             "**1. MANDATORY IMPORTS (at the very top):**\n"
-            "Ensure `from manim import *`, `import numpy as np`, and `import logging` are present. Also include `logger = logging.getLogger(__name__)`.\n\n"
+            "Ensure `from manim import *`, `from anim_gemini.colors import *`, `import numpy as np`, and `import logging` are present. Also include `logger = logging.getLogger(__name__)`.\n\n"
+
+            "**1A. COLOR PALETTE RULES (STRICT):**\n"
+            "Use ONLY the predefined color constants imported from `anim_gemini.colors`. The allowed color names are: "
+            + ", ".join(project_colors.ALLOWED_COLORS) + ".\n"
+            + "\nAlways provide colors using these constant names (e.g., `color=P_RED`, `fill_color=PROJ_BLUE_C`). Do NOT create new hex strings or use undefined names. If you need a shade variation, choose the closest constant from the list.\n\n"
 
             "**2. MANDATORY HELPER FUNCTION DEFINITIONS (after imports, before Scene class):**\n"
             "You MUST ALWAYS include the following Python function definitions in every generated script, exactly as shown, after imports and before the Scene class definition. These definitions are mandatory boilerplate.\n\n"
@@ -333,95 +360,101 @@ class VisualArchitect:
             "       #     return np.array([0, 0, 0]) # e.g., Screen center\n"
             "       return ORIGIN # Default to screen center (0,0,0)\n\n"
 
-            "**Your generated code MUST:**\\n"
-            "1.  Start with the line: `from manim import *`\\n"
-            "2.  Follow with the Manim scene class definition: `class " + manim_class_name + "(Scene):`\\n"
-            "3.  Implement the `construct(self):` method for that class, using Manim v0.19.0 syntax based on the API guide and scene request below.\\n\\n"
+            "**Your generated code MUST:**\n"
+            "1.  Start with the line: `from manim import *`\n"
+            "2.  Follow with the Manim scene class definition: `class " + manim_class_name + "(Scene):`\n"
+            "3.  Implement the `construct(self):` method for that class, using Manim v0.19.0 syntax based on the API guide and scene request below.\n\n"
 
-            "**CRITICAL RULE for `Line` objects (and similar like `Arrow`) within your `construct` method:**\\n"
-            "   The `Line` constructor *always* requires `start` and `end` arguments. Both *MUST* be 3D points (e.g., `[x,y,z]` list or NumPy array like `np.array([1,1,0])`).\\n"
-            "   - Correct: `Line(start=[0,0,0], end=[1,2,3])` or `Line(ORIGIN, RIGHT)`\\n"
-            "   - **ABSOLUTELY INCORRECT**: `Line(-0.5, -0.5, 0)` if you mean `start=[-0.5,-0.5,0]`.\\n"
-            "   Always use `Line(start_point_array, end_point_array)` structure.\\n\\n"
+            "**CRITICAL RULE for `Line` objects (and similar like `Arrow`) within your `construct` method:**\n"
+            "   The `Line` constructor *always* requires `start` and `end` arguments. Both *MUST* be 3D points (e.g., `[x,y,z]` list or NumPy array like `np.array([1,1,0])`).\n"
+            "   - Correct: `Line(start=[0,0,0], end=[1,2,3])` or `Line(ORIGIN, RIGHT)`\n"
+            "   - **ABSOLUTELY INCORRECT**: `Line(-0.5, -0.5, 0)` if you mean `start=[-0.5,-0.5,0]`.\n"
+            "   Always use `Line(start_point_array, end_point_array)` structure.\n\n"
 
-            "**CRITICAL RULE for Mobject Layout (Stacking/Arranging) within your `construct` method:**\\n"
-            "   When arranging Mobjects (e.g., vertically): You should primarily use the provided `stack_mobjects_vertically` helper function, or Manim's built-in `VGroup(*item_list).arrange(DOWN, buff=...)`. Avoid inventing other layout functions.\\n\\n"
+            "**CRITICAL RULE for Mobject Layout (Stacking/Arranging) within your `construct` method:**\n"
+            "   When arranging Mobjects (e.g., vertically): You should primarily use the provided `stack_mobjects_vertically` helper function, or Manim's built-in `VGroup(*item_list).arrange(DOWN, buff=...)`. Avoid inventing other layout functions.\n\n"
             
-            "**For ANY OTHER custom helper function** you invent for use within your `construct` method: It MUST be fully defined within the generated Python script, placed *inside* your Scene class if specific to it, or *before* your Scene class (after `from manim import *`) if it's more general and doesn't conflict with provided helpers.\\n\\n"
+            "**For ANY OTHER custom helper function** you invent for use within your `construct` method: It MUST be fully defined within the generated Python script, placed *inside* your Scene class if specific to it, or *before* your Scene class (after `from manim import *`) if it's more general and doesn't conflict with provided helpers.\n\n"
 
-            "**Output Format:** Your entire response MUST be a single block of raw Python code. Do NOT include any markdown formatting (like ```python at the start/end), explanations, or any other text outside of this single Python code block. The script must be directly executable after the boilerplate (containing helpers) is prepended.\\n\\n"
+            "**Output Format:** Your entire response MUST be a single block of raw Python code. Do NOT include any markdown formatting (like ```python at the start/end), explanations, or any other text outside of this single Python code block. The script must be directly executable after the boilerplate (containing helpers) is prepended.\n\n"
 
-            "---BEGIN MANIM V0.19.0 API GUIDE (for reference when writing the Scene class logic)---\\n"
-            f"{self.manim_api_guide_content}\\n"
-            "---END MANIM V0.19.0 API GUIDE---\\n\\n"
+            "---BEGIN MANIM V0.19.0 API GUIDE (for reference when writing the Scene class logic)---\n"
+            f"{self.manim_api_guide_content}\n"
+            "---END MANIM V0.19.0 API GUIDE---\n\n"
 
-            "Now, using the above guide and API reference, generate the Manim Python code (starting with `from manim import *`, then your class `{manim_class_name}(Scene):`, etc.) for the following request:\\n"
-            f"{prompt}\"\n"
+            "Now, using the above guide and API reference, generate the Manim Python code (starting with `from manim import *`, then your class `{manim_class_name}(Scene):`, etc.) for the following request:\n"
+            f"{prompt}"
         )
 
-        logger.info(f"Generating Manim code for Scene {scene_number}: '{scene_title}' using model {config.OPENROUTER_MODEL_NAME}")
-        # Log the full prompt for debugging (can be very long)
-        # logger.debug(f"Full prompt sent to LLM for scene {scene_title}:\\n{full_prompt}")
+        logger.info(f"[Async] Generating Manim code for Scene {scene_number}: '{scene_title}' using model {config.OPENROUTER_MODEL_NAME}")
 
         try:
-            response = self.client.chat.completions.create(
+            response = await self.async_client.chat.completions.create(
                 model=config.OPENROUTER_MODEL_NAME,
                 messages=[{"role": "user", "content": full_prompt}],
                 temperature=config.LLM_DEFAULT_TEMPERATURE,
-                # As per user's reference, reasoning_effort might be specific to some models
-                # For general OpenAI API, it's not standard. OpenRouter might handle it.
                 extra_headers={
                     "HTTP-Referer": config.OPENROUTER_SITE_URL,
                     "X-Title": config.OPENROUTER_APP_NAME,
-                    # "Reasoning-Effort": config.LLM_DEFAULT_REASONING_EFFORT # If supported
                 },
-                # Provider specification from config
-                provider={
-                    "order": config.OPENROUTER_PROVIDER_ORDER,
-                    "allow_fallbacks": config.OPENROUTER_ALLOW_FALLBACKS
-                }
             )
             llm_response_content = response.choices[0].message.content
         except Exception as e:
-            logger.error(f"Error calling OpenRouter API for scene '{scene_title}': {e}")
+            logger.error(f"[Async] Error calling OpenRouter API for scene '{scene_title}': {e}")
             return None, None
 
-        logger.debug(f"Raw LLM Response for Scene {scene_data.get('scene_number', 'Unknown')}:\n{llm_response_content}")
-
         cleaned_code = self._clean_generated_code(llm_response_content)
-        
         validated_code = self._validate_and_fix_manim_code(cleaned_code, manim_class_name)
 
-        # --- ADD DEBUG LOGGING HERE ---
-        logger.debug(f"Final code content for {manim_class_name} BEFORE saving to file (verify imports):\nValidated Code Start\n--------------------\n{validated_code}\n------------------\nValidated Code End")
-        # --- END DEBUG LOGGING ---
-
-        # Save the generated Python script
+        # --- Save files (blocking but small, ok in loop) ---
         script_file_name = f"scene_{scene_number:02d}_{sane_scene_title}.py"
         script_file_path = os.path.join(self.output_script_dir, script_file_name)
+
         try:
             with open(script_file_path, "w") as f:
                 f.write(validated_code)
-            logger.info(f"Manim script for scene '{scene_title}' saved to: {script_file_path}")
+            logger.info(f"[Async] Manim script for scene '{scene_title}' saved to: {script_file_path}")
         except IOError as e:
-            logger.error(f"Failed to write Manim script to {script_file_path}: {e}")
+            logger.error(f"[Async] Failed to write Manim script to {script_file_path}: {e}")
             return None, None
 
-        # Save a debug MD file
-        md_output_path = os.path.join(self.output_md_dir, f"visual_script_scene_{scene_number:02d}_{sane_scene_title}.md")
-        try:
-            with open(md_output_path, "w") as f:
-                f.write(f"# Visual Script (LLM-Generated Manim Code) for: {scene_title}\\n\\n")
-                f.write(f"## Prompt Sent to LLM:\\n\\n") # We'll write the user-focused part, not the whole guide
-                f.write(f"### User Request Part of Prompt:\\n```text\\n{prompt}\\n```\\n\\n")
-                f.write(f"### Note: The full prompt included the Manim v0.19.0 API Guide.\\n\\n")
-                f.write(f"## Raw LLM Response:\\n\\n```python\\n{llm_response_content}\\n```\\n\\n")
-                f.write(f"## Cleaned & Validated Code ({script_file_name}):\\n\\n```python\\n{validated_code}\\n```\\n")
-            logger.info(f"Visual Architect debug MD for '{scene_title}' saved to {md_output_path}")
-        except IOError as e:
-            logger.warning(f"Failed to write debug MD file to {md_output_path}: {e}")
+        # Debug MD file (optional) – we keep identical behaviour but run in thread to avoid blocking event loop too long
+        import asyncio, functools, textwrap
+        async def write_md():
+            md_output_path = os.path.join(self.output_md_dir, f"visual_script_scene_{scene_number:02d}_{sane_scene_title}.md")
+            content_md = (
+                f"# Visual Script (LLM-Generated Manim Code) for: {scene_title}\n\n"
+                f"## Prompt Sent to LLM:\n\n"
+                f"### User Request Part of Prompt:\n```text\n{prompt}\n```\n\n"
+                f"### Note: The full prompt included the Manim v0.19.0 API Guide.\n\n"
+                f"## Raw LLM Response:\n\n```python\n{llm_response_content}\n```\n\n"
+                f"## Cleaned & Validated Code ({script_file_name}):\n\n```python\n{validated_code}\n```\n"
+            )
+            try:
+                with open(md_output_path, "w") as f:
+                    f.write(content_md)
+                logger.info(f"[Async] Visual Architect debug MD for '{scene_title}' saved to {md_output_path}")
+            except IOError as e:
+                logger.warning(f"[Async] Failed to write debug MD file to {md_output_path}: {e}")
+
+        await write_md()
 
         return script_file_path, manim_class_name
+
+    # Backwards-compatibility: keep the original synchronous method name (renamed here)
+    def generate_manim_code_for_scene(self, scene_data: dict, topic_title: str) -> tuple[str | None, str | None]:
+        """Wrapper maintained for synchronous usage. Internally delegates to async version via `asyncio.run` when an event loop is not already running."""
+        try:
+            import asyncio
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+
+        if loop and loop.is_running():
+            # Already inside an event loop – use `asyncio.create_task` and wait
+            return loop.run_until_complete(self.async_generate_manim_code_for_scene(scene_data, topic_title))  # type: ignore
+        else:
+            return asyncio.run(self.async_generate_manim_code_for_scene(scene_data, topic_title))  # type: ignore
 
 
 if __name__ == '__main__':

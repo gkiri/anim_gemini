@@ -1,6 +1,7 @@
 from manim import UP, DOWN, LEFT, RIGHT, ORIGIN, Mobject, Text, VGroup, MarkupText, Rectangle, config, PINK
 import warnings
 import numpy as np
+from .colors import P_WHITE, P_BLACK, PROJ_PINK, P_GREY # Import project colors
 
 # --- Optional Font Size Definitions (used by generated scripts) ---
 OptionalLargeFontSize = 48
@@ -122,6 +123,9 @@ class LayoutConfig:
     # --- Colors (Optional, but good for consistency) ---
     # TEXT_COLOR = WHITE
     # BACKGROUND_COLOR = BLACK
+    TEXT_COLOR = P_WHITE  # Default text color from our palette
+    BACKGROUND_COLOR = P_BLACK # Default background color
+    ZONE_BOUNDARY_COLOR = P_GREY # Default for zone boundaries
 
     @classmethod
     def get_safe_area_width(cls):
@@ -230,6 +234,10 @@ def create_smart_text(
     For MarkupText (and others): Scales mobject using ensure_within_bounds.
     Positions the mobject in the zone center if zone_name is provided.
     """
+    # Ensure 'color' in text_kwargs defaults to LayoutConfig.TEXT_COLOR if not provided
+    if 'color' not in text_kwargs and 'fill_color' not in text_kwargs: # fill_color is another way to set text color
+        text_kwargs['color'] = LayoutConfig.TEXT_COLOR
+
     if not text_str:
         warnings.warn("create_smart_text called with empty string.")
         empty_mobj = text_class("", **text_kwargs) # Pass through any styling kwargs
@@ -530,26 +538,15 @@ def fit_mobject_in_zone(
     return mobject
 
 # --- Advanced: Visual Debugging ---
-def display_zone_boundaries(scene, zones_to_display=None, color=PINK, stroke_width=2, temp_display_time=3):
+def display_zone_boundaries(scene, zones_to_display=None, color=None, stroke_width=2, temp_display_time=3):
     """
-    Displays the boundaries of specified zones on the scene for debugging.
+    Displays rectangles representing the specified zones for visual debugging.
+    If zones_to_display is None, displays all DEFAULT_ZONES.
+    The rectangles are temporarily added to the scene and then removed.
+    """
+    if color is None:
+        color = LayoutConfig.ZONE_BOUNDARY_COLOR
 
-    Args:
-        scene (Scene): The Manim scene instance to add the boundaries to.
-        zones_to_display (list[str], optional): A list of zone names to display. 
-                                                If None, all DEFAULT_ZONES are displayed. 
-                                                Defaults to None.
-        color (ManimColor, optional): Color of the boundary rectangles and labels. 
-                                      Defaults to PINK.
-        stroke_width (int, optional): Stroke width for the boundary rectangles. 
-                                      Defaults to 2.
-        temp_display_time (float, optional): If greater than 0, boundaries are added,
-                                             the scene waits for this duration, and then 
-                                             boundaries are removed. If 0 or None, 
-                                             boundaries remain on scene. Defaults to 3.
-    Returns:
-        VGroup: A VGroup containing all the mobjects created for displaying zone boundaries (rectangles and labels).
-    """
     if zones_to_display is None:
         zones_to_display = list(DEFAULT_ZONES.keys())
 

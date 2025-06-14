@@ -18,6 +18,7 @@ You are a world-class Manim animation expert, tasked with creating exceptionally
         ```python
         from manim import *
         from anim_gemini.layout_utils import * # For smart text, zones, arrangements
+        from anim_gemini.colors import * # Predefined project color palette
         import numpy as np # Standard for Manim, include if any complex math/arrays are used
         ```
     *   **DO NOT** include any `sys.path` manipulation. The execution environment will handle `PYTHONPATH`.
@@ -55,6 +56,10 @@ You are a world-class Manim animation expert, tasked with creating exceptionally
     *   **Arrangement:** Use `arrange_mobjects_flow` (preferred) or `VGroup(...).arrange(...)` for multiple mobjects. Ensure the group fits its target area, potentially using `fit_mobject_in_zone` on the `VGroup`.
         *   **Passing `VGroup` Contents**: When passing the mobjects from a `VGroup` (e.g., `my_vgroup`) to layout functions like `stack_mobjects_vertically` or `arrange_mobjects_flow` that expect a list/sequence of mobjects, pass `my_vgroup` directly (e.g., `stack_mobjects_vertically(my_vgroup, ...)`). The layout functions in `layout_utils.py` are designed to handle iterating over a `VGroup` directly or unpacking it. Do not use an internal attribute like `.mobjects`.
     *   **Safe Area:** Be mindful of screen edges. `layout_utils` helps, but think about final composition.
+
+5A. **Color Palette (STRICT):**
+    *   **USE ONLY** the predefined color constants imported from `anim_gemini.colors` (e.g., `P_RED`, `PROJ_BLUE_C`). Do **NOT** invent new hex strings or color names.
+    *   The full list is available via `anim_gemini.colors.ALLOWED_COLORS`. Choose the nearest constant if you need a shade variation.
 
 6.  **Manim API & Best Practices (Manim Community v0.19.0):**
     *   CRITICAL: Closely adhere to the `manim_v0.19.0_api_guide.md` for all mobject constructor arguments and method calls. Incorrect arguments (e.g. wrong keyword name or misplaced arguments) will cause errors. Double-check argument names (e.g., `n` for `Star`).

@@ -10,6 +10,7 @@ This script orchestrates the entire process:
 import logging
 import os
 import json # For pretty printing outputs if needed
+import asyncio  # For asynchronous LLM calls
 
 from project_drishti.didactic_scripter import DidacticScripter
 from project_drishti.visual_architect import VisualArchitect
@@ -54,26 +55,36 @@ def run_pipeline(topic: str, num_scenes_override: int | None = None):
     # The script is also saved to a .md file by the scripter itself.
 
     # --- Stage 2: Visual Architect (LLM Manim Code Generation) --- 
-    logger.info("--- Stage 2: Generating Manim Code via LLM for each scene ---")
+    logger.info("--- Stage 2: Generating Manim Code via LLM for each scene (async) ---")
     architect = VisualArchitect()
-    generated_manim_scripts = [] # List to store (script_path, class_name) tuples
 
-    for scene_data in structured_script.get("scenes", []):
-        scene_num = scene_data.get("scene_number")
-        scene_title = scene_data.get("title")
-        logger.info(f"Processing Scene {scene_num}: '{scene_title}'")
-        
-        script_path, manim_class_name = architect.generate_manim_code_for_scene(
-            scene_data,
-            topic_title=structured_script.get("topic", "Unknown Topic")
-        )
-        
-        if script_path and manim_class_name:
-            logger.info(f"Successfully generated Manim script for Scene {scene_num}: {script_path}, Class: {manim_class_name}")
-            generated_manim_scripts.append((script_path, manim_class_name))
-        else:
-            logger.error(f"Failed to generate Manim script for Scene {scene_num}: '{scene_title}'. Skipping this scene.")
-    
+    async def generate_all_manim_scripts():
+        generated = []
+        # Limit parallelism to avoid hitting provider rate limits
+        max_concurrent_requests = 5
+        semaphore = asyncio.Semaphore(max_concurrent_requests)
+
+        async def sem_task(scene_data):
+            scene_num = scene_data.get("scene_number")
+            scene_title = scene_data.get("title")
+            logger.info(f"[Async] Processing Scene {scene_num}: '{scene_title}'")
+            async with semaphore:
+                return await architect.async_generate_manim_code_for_scene(
+                    scene_data,
+                    topic_title=structured_script.get("topic", "Unknown Topic")
+                )
+
+        tasks = [asyncio.create_task(sem_task(scene)) for scene in structured_script.get("scenes", [])]
+        for task in asyncio.as_completed(tasks):
+            result = await task
+            generated.append(result)
+        return generated
+
+    generated_manim_scripts = asyncio.run(generate_all_manim_scripts())
+
+    # Filter out failures
+    generated_manim_scripts = [t for t in generated_manim_scripts if t[0] and t[1]]
+
     if not generated_manim_scripts:
         logger.error("No Manim scripts were successfully generated. Exiting pipeline.")
         return

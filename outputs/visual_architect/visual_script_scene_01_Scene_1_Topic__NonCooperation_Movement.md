@@ -110,402 +110,314 @@ Class Name: "Scene1Scene_1_Topic__NonCooperation_Movement"
 from manim import *
 from anim_gemini.layout_utils import *
 import numpy as np
+import logging
+
+logger = logging.getLogger(__name__)
+
+def stack_mobjects_vertically(mobjects_list, center_point=None, buff=0.5):
+    if not mobjects_list:
+        return VGroup()
+    group = VGroup(*mobjects_list).arrange(DOWN, buff=buff)
+    if center_point is not None:
+        group.move_to(center_point)
+    return group
+
+def get_zone_center(zone_name: str):
+    logger.warning(f"get_zone_center called for '{zone_name}'. It currently returns ORIGIN (0,0,0). "
+                   f"Define actual zone coordinates in this boilerplate if specific positioning is critical.")
+    return ORIGIN
 
 class Scene1Scene_1_Topic__NonCooperation_Movement(Scene):
     def construct(self):
-        # Create title using smart text layout
+        # Create title with smart text
         title = create_smart_text(
             "Non-Cooperation Movement",
             zone_name="TITLE_AREA",
             font_size=48,
             color=YELLOW
         )
+        
+        # Create visual metaphors
+        british_flag = self.create_british_flag()
+        indian_people = self.create_people_group(5)
+        spinning_wheel = self.create_spinning_wheel()
+        boycott_fire = self.create_boycott_fire()
+        
+        # Position elements using zones
+        british_flag.move_to(get_zone_center("LEFT_HALF"))
+        indian_people.move_to(get_zone_center("RIGHT_HALF"))
+        spinning_wheel.move_to(get_zone_center("MAIN_CONTENT_AREA"))
+        boycott_fire.move_to(get_zone_center("MAIN_CONTENT_AREA") + DOWN*1.5)
+        
+        # Animation sequence
         self.play(Write(title))
         self.wait(0.5)
         
-        # Get main content area center
-        main_center = get_zone_center("MAIN_CONTENT_AREA")
-        
-        # Create symbolic elements
-        # British Crown representation
-        crown_base = Rectangle(width=1.5, height=0.3, color=GOLD, fill_opacity=1)
-        crown_points = [
-            np.array([-0.7, 0.15, 0]),
-            np.array([-0.5, 0.5, 0]),
-            np.array([0, 0.7, 0]),
-            np.array([0.5, 0.5, 0]),
-            np.array([0.7, 0.15, 0])
-        ]
-        crown_top = Polygon(*crown_points, color=GOLD, fill_opacity=1)
-        crown = VGroup(crown_base, crown_top).scale(0.8)
-        
-        # Chains representing oppression
-        chain_links = VGroup()
-        for i in range(5):
-            link = Annulus(inner_radius=0.1, outer_radius=0.15, color=GREY, fill_opacity=1)
-            link.shift(i * 0.3 * RIGHT)
-            chain_links.add(link)
-        
-        # Gandhi's spinning wheel (Charkha)
-        wheel = Circle(radius=0.5, color=BROWN, stroke_width=4)
-        spindle = Line(start=[-0.5, 0, 0], end=[0.5, 0, 0], color=BROWN, stroke_width=3)
-        charkha = VGroup(wheel, spindle)
-        
-        # People representation
-        person = VGroup(
-            Circle(radius=0.2, color=WHITE, fill_opacity=1),
-            Line(start=[0, -0.2, 0], end=[0, -0.8, 0], color=WHITE),
-            Line(start=[-0.2, -0.4, 0], end=[0.2, -0.4, 0], color=WHITE),
-            Line(start=[0, -0.8, 0], end=[-0.2, -1.2, 0], color=WHITE),
-            Line(start=[0, -0.8, 0], end=[0.2, -1.2, 0], color=WHITE)
-        )
-        
-        # Position elements
-        crown.move_to(main_center + LEFT*3 + UP)
-        chain_links.next_to(crown, DOWN, buff=0.5)
-        charkha.move_to(main_center)
-        person.move_to(main_center + RIGHT*3 + DOWN*0.5)
-        
-        # Animate crown and chains appearing
-        self.play(
-            DrawBorderThenFill(crown),
-            Create(chain_links),
-            run_time=1.5
-        )
+        # British rule representation
+        self.play(FadeIn(british_flag, shift=DOWN))
+        self.play(british_flag.animate.scale(1.2), run_time=1.5)
         self.wait(0.5)
         
-        # Animate spinning wheel appearing
-        self.play(GrowFromCenter(charkha))
+        # Indian people awakening
+        self.play(FadeIn(indian_people))
         self.play(
-            Rotate(charkha, angle=2*PI, run_time=2, rate_func=linear),
-            ApplyWave(chain_links)
-        )
-        self.wait(0.5)
-        
-        # Animate person appearing
-        self.play(FadeIn(person))
-        
-        # Create breaking chain animation
-        broken_chain = chain_links.copy()
-        self.play(
-            broken_chain.animate.shift(DOWN*0.5),
-            broken_chain.animate.rotate(PI/4, about_point=broken_chain.get_center()),
-            FadeOut(chain_links)
-        )
-        
-        # Create movement arrows
-        arrows = VGroup()
-        arrow_points = [
-            (charkha.get_center(), person.get_center()),
-            (charkha.get_center() + UP, person.get_center() + UP),
-            (charkha.get_center() + DOWN, person.get_center() + DOWN)
-        ]
-        
-        for start, end in arrow_points:
-            arrow = Arrow(
-                start=start,
-                end=end,
-                buff=0.1,
-                color=GREEN,
-                stroke_width=4,
-                max_tip_length_to_length_ratio=0.2
+            AnimationGroup(
+                *[Indicate(person, scale_factor=1.3) for person in indian_people],
+                lag_ratio=0.2
             )
-            arrows.add(arrow)
+        )
+        self.wait(0.5)
         
-        # Animate arrows spreading
-        self.play(LaggedStart(
-            *[GrowArrow(arrow) for arrow in arrows],
-            lag_ratio=0.3
-        ))
+        # Spinning wheel appears - symbol of self-reliance
+        self.play(
+            FadeIn(spinning_wheel, shift=UP),
+            FadeOut(british_flag, shift=DOWN)
+        )
+        self.play(Rotate(spinning_wheel, angle=2*PI, run_time=3, rate_func=linear))
+        self.wait(0.5)
+        
+        # Boycott fire animation
+        self.play(
+            spinning_wheel.animate.scale(0.7).shift(UP*1.5),
+            FadeIn(boycott_fire, shift=UP)
+        )
+        self.play(
+            LaggedStart(
+                *[Flash(part, flash_radius=0.3, color=RED) for part in boycott_fire],
+                lag_ratio=0.1
+            )
+        )
         self.wait(1)
         
-        # Create growing movement effect
-        movement_circles = VGroup()
-        for i in range(1, 4):
-            circle = Circle(
-                radius=i,
-                color=GREEN,
-                stroke_width=2,
-                fill_opacity=0.1
+        # People unite and march
+        self.play(
+            indian_people.animate.move_to(ORIGIN).arrange(RIGHT, buff=0.3),
+            FadeOut(spinning_wheel),
+            FadeOut(boycott_fire)
+        )
+        self.play(
+            AnimationGroup(
+                *[person.animate.shift(LEFT*3) for person in indian_people],
+                lag_ratio=0.1
             )
-            circle.move_to(charkha.get_center())
-            movement_circles.add(circle)
+        )
+        
+        # Final transformation to national symbol
+        ashoka_chakra = Circle(radius=0.8, color=BLUE, stroke_width=8)
+        chakra_spokes = VGroup(*[
+            Line(ORIGIN, [0.7, 0, 0]).rotate(i*PI/12, about_point=ORIGIN)
+            for i in range(24)
+        ]).set_color(BLUE)
+        national_symbol = VGroup(ashoka_chakra, chakra_spokes)
         
         self.play(
-            Create(movement_circles),
-            ApplyMethod(person.animate.shift(UP)),
+            Transform(indian_people, national_symbol),
             run_time=2
         )
-        
-        # Transform crown into ash (symbolizing decline of British authority)
-        ash_particles = VGroup()
-        for _ in range(20):
-            dot = Dot(
-                point=crown.get_center(),
-                radius=0.05 * np.random.random(),
-                color=GREY,
-                fill_opacity=0.7
-            )
-            ash_particles.add(dot)
-        
         self.play(
-            Transform(crown, ash_particles),
-            run_time=2
+            Rotate(chakra_spokes, angle=2*PI, run_time=3, rate_func=linear)
         )
-        
-        # Final composition - fade out elements except movement
-        self.play(
-            FadeOut(arrows),
-            FadeOut(broken_chain),
-            FadeOut(ash_particles),
-            movement_circles.animate.set_fill(opacity=0.3),
-            person.animate.scale(1.2).set_color(GREEN),
-            charkha.animate.scale(1.2)
-        )
-        
-        # Create Indian flag emerging
-        flag_width = 3
-        flag_height = 2
-        saffron = Rectangle(width=flag_width, height=flag_height/3, color="#FF9933", fill_opacity=1)
-        white = Rectangle(width=flag_width, height=flag_height/3, color=WHITE, fill_opacity=1)
-        green = Rectangle(width=flag_width, height=flag_height/3, color="#138808", fill_opacity=1)
-        
-        white.next_to(saffron, DOWN, buff=0)
-        green.next_to(white, DOWN, buff=0)
-        flag = VGroup(saffron, white, green)
-        
-        # Ashoka Chakra
-        chakra = Circle(radius=0.3, color="#000080", stroke_width=2)
-        spokes = VGroup()
-        for i in range(24):
-            angle = i * PI/12
-            spoke = Line(
-                start=chakra.get_center(),
-                end=chakra.get_center() + 0.3 * np.array([np.cos(angle), np.sin(angle), 0]),
-                color="#000080",
-                stroke_width=1
-            )
-            spokes.add(spoke)
-        chakra_group = VGroup(chakra, spokes)
-        chakra_group.move_to(white.get_center())
-        
-        flag.add(chakra_group)
-        flag.move_to(main_center)
-        
-        # Final transformation
-        self.play(
-            Transform(movement_circles, flag),
-            FadeOut(person),
-            FadeOut(charkha),
-            run_time=2
-        )
-        self.play(Indicate(flag))
         self.wait(2)
-        
-        # Cleanup
-        self.play(
-            FadeOut(title),
-            FadeOut(flag)
-        )
-        self.wait(0.5)
+    
+    def create_british_flag(self):
+        # Create simplified British flag
+        background = Rectangle(width=3, height=2, color=NAVY_BLUE, fill_opacity=1)
+        cross1 = Rectangle(width=3, height=0.4, color=WHITE, fill_opacity=1)
+        cross2 = Rectangle(width=0.4, height=2, color=WHITE, fill_opacity=1)
+        diag1 = Rectangle(width=0.3, height=2.5, color=RED, fill_opacity=1
+                         ).rotate(PI/4).set_width(2.5, stretch=True)
+        diag2 = Rectangle(width=0.3, height=2.5, color=RED, fill_opacity=1
+                         ).rotate(-PI/4).set_width(2.5, stretch=True)
+        return VGroup(background, cross1, cross2, diag1, diag2)
+    
+    def create_people_group(self, count):
+        # Create simple person mobjects
+        people = VGroup()
+        for _ in range(count):
+            head = Circle(radius=0.2, color=WHITE, fill_opacity=1)
+            body = Line(ORIGIN, DOWN*0.7, stroke_width=4)
+            arms = Line(LEFT*0.3, RIGHT*0.3, stroke_width=3).next_to(body, UP, buff=0)
+            person = VGroup(head, body, arms)
+            people.add(person)
+        return people.arrange(RIGHT, buff=0.5)
+    
+    def create_spinning_wheel(self):
+        # Create charkha (spinning wheel) representation
+        wheel = Circle(radius=1, color=GOLD_B, stroke_width=8)
+        spokes = VGroup(*[
+            Line(ORIGIN, [0.9, 0, 0]).rotate(i*PI/6, about_point=ORIGIN)
+            for i in range(12)
+        ])
+        base = Polygon([-1, -0.5, 0], [1, -0.5, 0], [0.5, -1.2, 0], [-0.5, -1.2, 0],
+                      color=GOLD_E, fill_opacity=1)
+        spindle = Line(UP*0.2, DOWN*0.2, stroke_width=6).shift(LEFT*0.5)
+        return VGroup(wheel, spokes, base, spindle)
+    
+    def create_boycott_fire(self):
+        # Create animated fire effect
+        fire_base = Rectangle(width=2, height=0.2, color=GREY, fill_opacity=1)
+        flames = VGroup()
+        for i in range(8):
+            flame = Polygon(
+                [-0.2, 0, 0], [0.2, 0, 0], [0, np.random.uniform(0.8, 1.2), 0],
+                color=[RED, ORANGE, YELLOW][i%3], fill_opacity=0.7
+            ).shift(RIGHT*np.random.uniform(-0.8, 0.8))
+            flames.add(flame)
+        return VGroup(fire_base, flames)
 ```\n```\n\n## Cleaned & Validated Code (scene_01_Scene_1_Topic__NonCooperation_Movement.py):\n\n```python\nfrom manim import *
 from anim_gemini.layout_utils import *  # Ensured by VisualArchitect validator
 import numpy as np
+import logging
+
+logger = logging.getLogger(__name__)
+
+def stack_mobjects_vertically(mobjects_list, center_point=None, buff=0.5):
+    if not mobjects_list:
+        return VGroup()
+    group = VGroup(*mobjects_list).arrange(DOWN, buff=buff)
+    if center_point is not None:
+        group.move_to(center_point)
+    return group
+
+def get_zone_center(zone_name: str):
+    logger.warning(f"get_zone_center called for '{zone_name}'. It currently returns ORIGIN (0,0,0). "
+                   f"Define actual zone coordinates in this boilerplate if specific positioning is critical.")
+    return ORIGIN
 
 class Scene1Scene_1_Topic__NonCooperation_Movement(Scene):
     def construct(self):
-        # Create title using smart text layout
+        # Create title with smart text
         title = create_smart_text(
             "Non-Cooperation Movement",
             zone_name="TITLE_AREA",
             font_size=48,
             color=YELLOW
         )
+        
+        # Create visual metaphors
+        british_flag = self.create_british_flag()
+        indian_people = self.create_people_group(5)
+        spinning_wheel = self.create_spinning_wheel()
+        boycott_fire = self.create_boycott_fire()
+        
+        # Position elements using zones
+        british_flag.move_to(get_zone_center("LEFT_HALF"))
+        indian_people.move_to(get_zone_center("RIGHT_HALF"))
+        spinning_wheel.move_to(get_zone_center("MAIN_CONTENT_AREA"))
+        boycott_fire.move_to(get_zone_center("MAIN_CONTENT_AREA") + DOWN*1.5)
+        
+        # Animation sequence
         self.play(Write(title))
         self.wait(0.5)
         
-        # Get main content area center
-        main_center = get_zone_center("MAIN_CONTENT_AREA")
-        
-        # Create symbolic elements
-        # British Crown representation
-        crown_base = Rectangle(width=1.5, height=0.3, color=GOLD, fill_opacity=1)
-        crown_points = [
-            np.array([-0.7, 0.15, 0]),
-            np.array([-0.5, 0.5, 0]),
-            np.array([0, 0.7, 0]),
-            np.array([0.5, 0.5, 0]),
-            np.array([0.7, 0.15, 0])
-        ]
-        crown_top = Polygon(*crown_points, color=GOLD, fill_opacity=1)
-        crown = VGroup(crown_base, crown_top).scale(0.8)
-        
-        # Chains representing oppression
-        chain_links = VGroup()
-        for i in range(5):
-            link = Annulus(inner_radius=0.1, outer_radius=0.15, color=GREY, fill_opacity=1)
-            link.shift(i * 0.3 * RIGHT)
-            chain_links.add(link)
-        
-        # Gandhi's spinning wheel (Charkha)
-        wheel = Circle(radius=0.5, color=BROWN, stroke_width=4)
-        spindle = Line(start=[-0.5, 0, 0], end=[0.5, 0, 0], color=BROWN, stroke_width=3)
-        charkha = VGroup(wheel, spindle)
-        
-        # People representation
-        person = VGroup(
-            Circle(radius=0.2, color=WHITE, fill_opacity=1),
-            Line(start=[0, -0.2, 0], end=[0, -0.8, 0], color=WHITE),
-            Line(start=[-0.2, -0.4, 0], end=[0.2, -0.4, 0], color=WHITE),
-            Line(start=[0, -0.8, 0], end=[-0.2, -1.2, 0], color=WHITE),
-            Line(start=[0, -0.8, 0], end=[0.2, -1.2, 0], color=WHITE)
-        )
-        
-        # Position elements
-        crown.move_to(main_center + LEFT*3 + UP)
-        chain_links.next_to(crown, DOWN, buff=0.5)
-        charkha.move_to(main_center)
-        person.move_to(main_center + RIGHT*3 + DOWN*0.5)
-        
-        # Animate crown and chains appearing
-        self.play(
-            DrawBorderThenFill(crown),
-            Create(chain_links),
-            run_time=1.5
-        )
+        # British rule representation
+        self.play(FadeIn(british_flag, shift=DOWN))
+        self.play(british_flag.animate.scale(1.2), run_time=1.5)
         self.wait(0.5)
         
-        # Animate spinning wheel appearing
-        self.play(GrowFromCenter(charkha))
+        # Indian people awakening
+        self.play(FadeIn(indian_people))
         self.play(
-            Rotate(charkha, angle=2*PI, run_time=2, rate_func=linear),
-            ApplyWave(chain_links)
-        )
-        self.wait(0.5)
-        
-        # Animate person appearing
-        self.play(FadeIn(person))
-        
-        # Create breaking chain animation
-        broken_chain = chain_links.copy()
-        self.play(
-            broken_chain.animate.shift(DOWN*0.5),
-            broken_chain.animate.rotate(PI/4, about_point=broken_chain.get_center()),
-            FadeOut(chain_links)
-        )
-        
-        # Create movement arrows
-        arrows = VGroup()
-        arrow_points = [
-            (charkha.get_center(), person.get_center()),
-            (charkha.get_center() + UP, person.get_center() + UP),
-            (charkha.get_center() + DOWN, person.get_center() + DOWN)
-        ]
-        
-        for start, end in arrow_points:
-            arrow = Arrow(
-                start=start,
-                end=end,
-                buff=0.1,
-                color=GREEN,
-                stroke_width=4,
-                max_tip_length_to_length_ratio=0.2
+            AnimationGroup(
+                *[Indicate(person, scale_factor=1.3) for person in indian_people],
+                lag_ratio=0.2
             )
-            arrows.add(arrow)
+        )
+        self.wait(0.5)
         
-        # Animate arrows spreading
-        self.play(LaggedStart(
-            *[GrowArrow(arrow) for arrow in arrows],
-            lag_ratio=0.3
-        ))
+        # Spinning wheel appears - symbol of self-reliance
+        self.play(
+            FadeIn(spinning_wheel, shift=UP),
+            FadeOut(british_flag, shift=DOWN)
+        )
+        self.play(Rotate(spinning_wheel, angle=2*PI, run_time=3, rate_func=linear))
+        self.wait(0.5)
+        
+        # Boycott fire animation
+        self.play(
+            spinning_wheel.animate.scale(0.7).shift(UP*1.5),
+            FadeIn(boycott_fire, shift=UP)
+        )
+        self.play(
+            LaggedStart(
+                *[Flash(part, flash_radius=0.3, color=RED) for part in boycott_fire],
+                lag_ratio=0.1
+            )
+        )
         self.wait(1)
         
-        # Create growing movement effect
-        movement_circles = VGroup()
-        for i in range(1, 4):
-            circle = Circle(
-                radius=i,
-                color=GREEN,
-                stroke_width=2,
-                fill_opacity=0.1
+        # People unite and march
+        self.play(
+            indian_people.animate.move_to(ORIGIN).arrange(RIGHT, buff=0.3),
+            FadeOut(spinning_wheel),
+            FadeOut(boycott_fire)
+        )
+        self.play(
+            AnimationGroup(
+                *[person.animate.shift(LEFT*3) for person in indian_people],
+                lag_ratio=0.1
             )
-            circle.move_to(charkha.get_center())
-            movement_circles.add(circle)
+        )
+        
+        # Final transformation to national symbol
+        ashoka_chakra = Circle(radius=0.8, color=BLUE, stroke_width=8)
+        chakra_spokes = VGroup(*[
+            Line(ORIGIN, [0.7, 0, 0]).rotate(i*PI/12, about_point=ORIGIN)
+            for i in range(24)
+        ]).set_color(BLUE)
+        national_symbol = VGroup(ashoka_chakra, chakra_spokes)
         
         self.play(
-            Create(movement_circles),
-            ApplyMethod(person.animate.shift(UP)),
+            Transform(indian_people, national_symbol),
             run_time=2
         )
-        
-        # Transform crown into ash (symbolizing decline of British authority)
-        ash_particles = VGroup()
-        for _ in range(20):
-            dot = Dot(
-                point=crown.get_center(),
-                radius=0.05 * np.random.random(),
-                color=GREY,
-                fill_opacity=0.7
-            )
-            ash_particles.add(dot)
-        
         self.play(
-            Transform(crown, ash_particles),
-            run_time=2
+            Rotate(chakra_spokes, angle=2*PI, run_time=3, rate_func=linear)
         )
-        
-        # Final composition - fade out elements except movement
-        self.play(
-            FadeOut(arrows),
-            FadeOut(broken_chain),
-            FadeOut(ash_particles),
-            movement_circles.animate.set_fill(opacity=0.3),
-            person.animate.scale(1.2).set_color(GREEN),
-            charkha.animate.scale(1.2)
-        )
-        
-        # Create Indian flag emerging
-        flag_width = 3
-        flag_height = 2
-        saffron = Rectangle(width=flag_width, height=flag_height/3, color="#FF9933", fill_opacity=1)
-        white = Rectangle(width=flag_width, height=flag_height/3, color=WHITE, fill_opacity=1)
-        green = Rectangle(width=flag_width, height=flag_height/3, color="#138808", fill_opacity=1)
-        
-        white.next_to(saffron, DOWN, buff=0)
-        green.next_to(white, DOWN, buff=0)
-        flag = VGroup(saffron, white, green)
-        
-        # Ashoka Chakra
-        chakra = Circle(radius=0.3, color="#000080", stroke_width=2)
-        spokes = VGroup()
-        for i in range(24):
-            angle = i * PI/12
-            spoke = Line(
-                start=chakra.get_center(),
-                end=chakra.get_center() + 0.3 * np.array([np.cos(angle), np.sin(angle), 0]),
-                color="#000080",
-                stroke_width=1
-            )
-            spokes.add(spoke)
-        chakra_group = VGroup(chakra, spokes)
-        chakra_group.move_to(white.get_center())
-        
-        flag.add(chakra_group)
-        flag.move_to(main_center)
-        
-        # Final transformation
-        self.play(
-            Transform(movement_circles, flag),
-            FadeOut(person),
-            FadeOut(charkha),
-            run_time=2
-        )
-        self.play(Indicate(flag))
         self.wait(2)
-        
-        # Cleanup
-        self.play(
-            FadeOut(title),
-            FadeOut(flag)
-        )
-        self.wait(0.5)\n```\n
+    
+    def create_british_flag(self):
+        # Create simplified British flag
+        background = Rectangle(width=3, height=2, color=NAVY_BLUE, fill_opacity=1)
+        cross1 = Rectangle(width=3, height=0.4, color=WHITE, fill_opacity=1)
+        cross2 = Rectangle(width=0.4, height=2, color=WHITE, fill_opacity=1)
+        diag1 = Rectangle(width=0.3, height=2.5, color=RED, fill_opacity=1
+                         ).rotate(PI/4).set_width(2.5, stretch=True)
+        diag2 = Rectangle(width=0.3, height=2.5, color=RED, fill_opacity=1
+                         ).rotate(-PI/4).set_width(2.5, stretch=True)
+        return VGroup(background, cross1, cross2, diag1, diag2)
+    
+    def create_people_group(self, count):
+        # Create simple person mobjects
+        people = VGroup()
+        for _ in range(count):
+            head = Circle(radius=0.2, color=WHITE, fill_opacity=1)
+            body = Line(ORIGIN, DOWN*0.7, stroke_width=4)
+            arms = Line(LEFT*0.3, RIGHT*0.3, stroke_width=3).next_to(body, UP, buff=0)
+            person = VGroup(head, body, arms)
+            people.add(person)
+        return people.arrange(RIGHT, buff=0.5)
+    
+    def create_spinning_wheel(self):
+        # Create charkha (spinning wheel) representation
+        wheel = Circle(radius=1, color=GOLD_B, stroke_width=8)
+        spokes = VGroup(*[
+            Line(ORIGIN, [0.9, 0, 0]).rotate(i*PI/6, about_point=ORIGIN)
+            for i in range(12)
+        ])
+        base = Polygon([-1, -0.5, 0], [1, -0.5, 0], [0.5, -1.2, 0], [-0.5, -1.2, 0],
+                      color=GOLD_E, fill_opacity=1)
+        spindle = Line(UP*0.2, DOWN*0.2, stroke_width=6).shift(LEFT*0.5)
+        return VGroup(wheel, spokes, base, spindle)
+    
+    def create_boycott_fire(self):
+        # Create animated fire effect
+        fire_base = Rectangle(width=2, height=0.2, color=GREY, fill_opacity=1)
+        flames = VGroup()
+        for i in range(8):
+            flame = Polygon(
+                [-0.2, 0, 0], [0.2, 0, 0], [0, np.random.uniform(0.8, 1.2), 0],
+                color=[RED, ORANGE, YELLOW][i%3], fill_opacity=0.7
+            ).shift(RIGHT*np.random.uniform(-0.8, 0.8))
+            flames.add(flame)
+        return VGroup(fire_base, flames)\n```\n
