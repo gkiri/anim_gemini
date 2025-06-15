@@ -10,6 +10,8 @@ This script orchestrates the entire process:
 import logging
 import os
 import json # For pretty printing outputs if needed
+import asyncio
+from functools import partial
 
 from project_drishti.didactic_scripter import DidacticScripter
 from project_drishti.visual_architect import VisualArchitect
@@ -53,27 +55,51 @@ def run_pipeline(topic: str, num_scenes_override: int | None = None):
     logger.debug(f"Didactic Script Content:\n{json.dumps(structured_script, indent=4)}")
     # The script is also saved to a .md file by the scripter itself.
 
-    # --- Stage 2: Visual Architect (LLM Manim Code Generation) --- 
-    logger.info("--- Stage 2: Generating Manim Code via LLM for each scene ---")
+    # --- Stage 2: Visual Architect (LLM Manim Code Generation — now async/parallel) --- 
+    logger.info("--- Stage 2: Generating Manim Code via LLM for each scene (async parallel) ---")
     architect = VisualArchitect()
-    generated_manim_scripts = [] # List to store (script_path, class_name) tuples
 
-    for scene_data in structured_script.get("scenes", []):
-        scene_num = scene_data.get("scene_number")
-        scene_title = scene_data.get("title")
-        logger.info(f"Processing Scene {scene_num}: '{scene_title}'")
-        
-        script_path, manim_class_name = architect.generate_manim_code_for_scene(
-            scene_data,
-            topic_title=structured_script.get("topic", "Unknown Topic")
-        )
-        
+    scenes_to_process = structured_script.get("scenes", [])
+
+    async def generate_all_scripts():
+        """Run LLM code-generation calls concurrently using a thread pool."""
+        loop = asyncio.get_running_loop()
+        tasks = []
+        for sd in scenes_to_process:
+            scene_num = sd.get("scene_number")
+            scene_title = sd.get("title")
+            logger.info(f"Scheduling Scene {scene_num}: '{scene_title}' for async generation")
+            tasks.append(
+                loop.run_in_executor(
+                    None,  # Default ThreadPoolExecutor
+                    partial(
+                        architect.generate_manim_code_for_scene,
+                        sd,
+                        topic_title=structured_script.get("topic", "Unknown Topic")
+                    )
+                )
+            )
+        # Gather returns results in the order tasks were created
+        return await asyncio.gather(*tasks)
+
+    # Execute the async gather and collect results
+    generated_results = asyncio.run(generate_all_scripts())
+
+    # Filter and log results
+    generated_manim_scripts = []  # List to store successful (script_path, class_name) tuples
+    for (script_path, manim_class_name), sd in zip(generated_results, scenes_to_process):
+        scene_num = sd.get("scene_number")
+        scene_title = sd.get("title")
         if script_path and manim_class_name:
-            logger.info(f"Successfully generated Manim script for Scene {scene_num}: {script_path}, Class: {manim_class_name}")
+            logger.info(
+                f"Successfully generated Manim script for Scene {scene_num}: {script_path}, Class: {manim_class_name}"
+            )
             generated_manim_scripts.append((script_path, manim_class_name))
         else:
-            logger.error(f"Failed to generate Manim script for Scene {scene_num}: '{scene_title}'. Skipping this scene.")
-    
+            logger.error(
+                f"Failed to generate Manim script for Scene {scene_num}: '{scene_title}'. Skipping this scene."
+            )
+
     if not generated_manim_scripts:
         logger.error("No Manim scripts were successfully generated. Exiting pipeline.")
         return
