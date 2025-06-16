@@ -156,6 +156,7 @@ class VisualArchitect:
         # Add non-negotiable imports. These will be the definitive imports for the script.
         final_script_lines.append("from manim import *")
         final_script_lines.append("from anim_gemini.layout_utils import *  # Ensured by VisualArchitect validator")
+        final_script_lines.append("import anim_gemini.colors as mcolors # Ensured by VisualArchitect validator")
         
         # Scan original LLM core code for numpy usage to decide if we need to add its import
         numpy_import_needed = False
@@ -176,6 +177,7 @@ class VisualArchitect:
         exact_manim_import_str = "from manim import *"
         exact_correct_layout_import_str = "from anim_gemini.layout_utils import *"
         exact_numpy_import_str = "import numpy as np"
+        exact_mcolors_import_str = "import anim_gemini.colors as mcolors"
 
         for line_content in llm_core_code_lines:
             stripped_line = line_content.strip()
@@ -197,6 +199,10 @@ class VisualArchitect:
 
             if numpy_import_needed and stripped_line == exact_numpy_import_str:
                 logger.debug(f"Validator skipping redundant NumPy import line: '{line_content}'")
+                continue
+            
+            if stripped_line == exact_mcolors_import_str:
+                logger.debug(f"Validator skipping redundant mcolors import line: '{line_content}'")
                 continue
             
             final_script_lines.append(line_content)
@@ -291,73 +297,123 @@ class VisualArchitect:
             # Add any other placeholders here if your template uses them
         )
 
-        # Updated Prompt: Informs LLM that helpers ARE PROVIDED.
-        # LLM's responsibility is to generate the "from manim import *" and the Scene class.
-        full_prompt = (
-            "You are an expert Manim programmer. Your task is to generate a complete, directly executable Manim Community v0.19.0 Python script for a single scene. "
-            "The script you generate will have some helper functions and necessary imports (`numpy`, `logging`) prepended to it programmatically. "
-            "Therefore, your generated code MUST start with `from manim import *`.\\n\\n"
+        # List of available colors to be injected into the prompt
+        available_colors_list = [
+            "BLACK", "BLUE", "BLUE_A", "BLUE_B", "BLUE_C", "BLUE_D", "BLUE_E", "BROWN", 
+            "DARKER_GRAY", "DARKER_GREY", "DARK_BLUE", "DARK_BROWN", "DARK_GRAY", "DARK_GREY", 
+            "GOLD", "GOLD_A", "GOLD_B", "GOLD_C", "GOLD_D", "GOLD_E", "GRAY", "GRAY_A", "GRAY_B", 
+            "GRAY_BROWN", "GRAY_C", "GRAY_D", "GRAY_E", "GREEN", "GREEN_A", "GREEN_B", "GREEN_C", 
+            "GREEN_D", "GREEN_E", "GREY", "GREY_A", "GREY_B", "GREY_BROWN", "GREY_C", "GREY_D", 
+            "GREY_E", "LIGHTER_GRAY", "LIGHTER_GREY", "LIGHT_BROWN", "LIGHT_GRAY", "LIGHT_GREY", 
+            "LIGHT_PINK", "LOGO_BLACK", "LOGO_BLUE", "LOGO_GREEN", "LOGO_RED", "LOGO_WHITE", 
+            "MAROON", "MAROON_A", "MAROON_B", "MAROON_C", "MAROON_D", "MAROON_E", "ORANGE", 
+            "PINK", "PURE_BLUE", "PURE_GREEN", "PURE_RED", "PURPLE", "PURPLE_A", "PURPLE_B", 
+            "PURPLE_C", "PURPLE_D", "PURPLE_E", "RED", "RED_A", "RED_B", "RED_C", "RED_D", "RED_E", 
+            "SKIN", "TEAL", "TEAL_A", "TEAL_B", "TEAL_C", "TEAL_D", "TEAL_E", "WHITE", "YELLOW", 
+            "YELLOW_A", "YELLOW_B", "YELLOW_C", "YELLOW_D", "YELLOW_E"
+        ]
+        available_colors_names_str = ", ".join(available_colors_list)
 
-            "**1. MANDATORY IMPORTS (at the very top):**\n"
-            "Ensure `from manim import *`, `import numpy as np`, and `import logging` are present. Also include `logger = logging.getLogger(__name__)`.\n\n"
+        # Construct full_prompt by joining a list of triple-quoted strings for robustness
+        prompt_parts = [
+            """You are an expert Manim programmer. Your task is to generate a complete, directly executable Manim Community v0.19.0 Python script for a single scene. """,
+            """The script you generate will have some helper functions and necessary imports (`numpy`, `logging`) prepended to it programmatically. """,
+            """The import `import anim_gemini.colors as mcolors` will also be handled by our system, but your code MUST use it. """,
+            """Therefore, your generated code MUST start with `from manim import *`.\n\n""",
 
-            "**2. MANDATORY HELPER FUNCTION DEFINITIONS (after imports, before Scene class):**\n"
-            "You MUST ALWAYS include the following Python function definitions in every generated script, exactly as shown, after imports and before the Scene class definition. These definitions are mandatory boilerplate.\n\n"
+            """**1. MANDATORY IMPORTS (at the very top of YOUR generated code):**\n""",
+            """Ensure `from manim import *`, `import numpy as np` (if you use numpy features), and `import logging` with `logger = logging.getLogger(__name__)` (if you add custom logging) are present. """,
+            """You MUST use `mcolors` for all colors, which will be available via `import anim_gemini.colors as mcolors`.\n\n""",
 
-            "   # --- Helper Function: stack_mobjects_vertically ---\n"
-            "   # Stacks a list of Mobjects vertically.\n"
-            "   # `center_point=None` means the group's final position is determined purely by arrange,\n"
-            "   # otherwise, it's moved to the specified center_point after arrangement.\n"
-            "   def stack_mobjects_vertically(mobjects_list, center_point=None, buff=0.5):\n"
-            "       # Ensure VGroup, DOWN, ORIGIN are available from 'from manim import *'\n"
-            "       # Ensure np is imported for np.array_equal\n"
-            "       if not mobjects_list: # Handle empty list\n"
-            "           return VGroup()\n"
-            "       group = VGroup(*mobjects_list).arrange(DOWN, buff=buff)\n"
-            "       if center_point is not None: # If a center_point is specified for the group\n"
-            "           group.move_to(center_point) # ORIGIN (0,0,0) is the default for move_to if center_point is True but no array\n"
-            "       return group\n\n"
-
-            "   # --- Helper Function: get_zone_center ---\n"
-            "   # Returns a predefined coordinate for a named zone.\n"
-            "   # Placeholder: currently returns ORIGIN and logs a warning.\n"
-            "   def get_zone_center(zone_name: str):\n"
-            "       # Ensure logger is defined, ORIGIN is available from 'from manim import *'\n"
-            "       # Ensure np is imported if np.array values are to be returned for specific zones.\n"
-            "       logger.warning(f\"get_zone_center called for '{zone_name}'. It currently returns ORIGIN (0,0,0). \"\n"
-            "                      f\"Define actual zone coordinates in this boilerplate if specific positioning is critical.\")\n"
-            "       # Example for specific zones (uncomment and adapt here if needed):\n"
-            "       # if zone_name == \"TITLE_ZONE\":\n"
-            "       #     return np.array([0, 3, 0]) # e.g., Top center\n"
-            "       # if zone_name == \"MAIN_CONTENT_AREA\":\n"
-            "       #     return np.array([0, 0, 0]) # e.g., Screen center\n"
-            "       return ORIGIN # Default to screen center (0,0,0)\n\n"
-
-            "**Your generated code MUST:**\\n"
-            "1.  Start with the line: `from manim import *`\\n"
-            "2.  Follow with the Manim scene class definition: `class " + manim_class_name + "(Scene):`\\n"
-            "3.  Implement the `construct(self):` method for that class, using Manim v0.19.0 syntax based on the API guide and scene request below.\\n\\n"
-
-            "**CRITICAL RULE for `Line` objects (and similar like `Arrow`) within your `construct` method:**\\n"
-            "   The `Line` constructor *always* requires `start` and `end` arguments. Both *MUST* be 3D points (e.g., `[x,y,z]` list or NumPy array like `np.array([1,1,0])`).\\n"
-            "   - Correct: `Line(start=[0,0,0], end=[1,2,3])` or `Line(ORIGIN, RIGHT)`\\n"
-            "   - **ABSOLUTELY INCORRECT**: `Line(-0.5, -0.5, 0)` if you mean `start=[-0.5,-0.5,0]`.\\n"
-            "   Always use `Line(start_point_array, end_point_array)` structure.\\n\\n"
-
-            "**CRITICAL RULE for Mobject Layout (Stacking/Arranging) within your `construct` method:**\\n"
-            "   When arranging Mobjects (e.g., vertically): You should primarily use the provided `stack_mobjects_vertically` helper function, or Manim's built-in `VGroup(*item_list).arrange(DOWN, buff=...)`. Avoid inventing other layout functions.\\n\\n"
+            """**2. COLOR USAGE GUIDELINES (MANDATORY):**\n""",
+            """You MUST use colors by referencing the `mcolors` module (e.g., `mcolors.RED`, `mcolors.BLUE`).\n""",
+            f"""ONLY use colors from the following predefined list: {available_colors_names_str}. (Refer to them as `mcolors.COLOR_NAME`).\n""",
+            """Do NOT define or use any other color names or hex codes directly in your code for Manim objects.\n\n""",
             
-            "**For ANY OTHER custom helper function** you invent for use within your `construct` method: It MUST be fully defined within the generated Python script, placed *inside* your Scene class if specific to it, or *before* your Scene class (after `from manim import *`) if it's more general and doesn't conflict with provided helpers.\\n\\n"
+            """**3. MANDATORY HELPER FUNCTION DEFINITIONS (after imports, before Scene class - include these definitions in YOUR generated code):**\n""",
+            """You MUST ALWAYS include the following Python function definitions in every generated script, exactly as shown, after imports and before the Scene class definition. These definitions are mandatory boilerplate for you to include.\n\n""",
 
-            "**Output Format:** Your entire response MUST be a single block of raw Python code. Do NOT include any markdown formatting (like ```python at the start/end), explanations, or any other text outside of this single Python code block. The script must be directly executable after the boilerplate (containing helpers) is prepended.\\n\\n"
+            """   # --- Helper Function: stack_mobjects_vertically ---
+""",
+            """   # Stacks a list of Mobjects vertically.
+""",
+            """   # `center_point=None` means the group's final position is determined purely by arrange,
+""",
+            """   # otherwise, it's moved to the specified center_point after arrangement.
+""",
+            """   def stack_mobjects_vertically(mobjects_list, center_point=None, buff=0.5):
+""",
+            """       # Ensure VGroup, DOWN, ORIGIN are available from 'from manim import *'
+""",
+            """       # Ensure np is imported for np.array_equal
+""",
+            """       if not mobjects_list: # Handle empty list
+""",
+            """           return VGroup()
+""",
+            """       group = VGroup(*mobjects_list).arrange(DOWN, buff=buff)
+""",
+            """       if center_point is not None: # If a center_point is specified for the group
+""",
+            """           group.move_to(center_point) # ORIGIN (0,0,0) is the default for move_to if center_point is True but no array
+""",
+            """       return group\n\n""",
 
-            "---BEGIN MANIM V0.19.0 API GUIDE (for reference when writing the Scene class logic)---\\n"
-            f"{self.manim_api_guide_content}\\n"
-            "---END MANIM V0.19.0 API GUIDE---\\n\\n"
+            """   # --- Helper Function: get_zone_center ---
+""",
+            """   # Returns a predefined coordinate for a named zone.
+""",
+            """   # Placeholder: currently returns ORIGIN and logs a warning.
+""",
+            """   def get_zone_center(zone_name: str):
+""",
+            """       # Ensure logger is defined, ORIGIN is available from 'from manim import *'
+""",
+            """       # Ensure np is imported if np.array values are to be returned for specific zones.
+""",
+            # Correctly represent the f-string for the LLM within a triple-quoted string
+            """       logger.warning(f"get_zone_center called for '{zone_name}'. It currently returns ORIGIN (0,0,0). "
+                      f"Define actual zone coordinates in this boilerplate if specific positioning is critical.")
+""",
+            """       # Example for specific zones (uncomment and adapt here if needed):
+""",
+            """       # if zone_name == "TITLE_ZONE":
+""", # Double quotes are fine inside triple quotes
+            """       #     return np.array([0, 3, 0]) # e.g., Top center
+""",
+            """       # if zone_name == "MAIN_CONTENT_AREA":
+""",
+            """       #     return np.array([0, 0, 0]) # e.g., Screen center
+""",
+            """       return ORIGIN # Default to screen center (0,0,0)\n\n""",
 
-            "Now, using the above guide and API reference, generate the Manim Python code (starting with `from manim import *`, then your class `{manim_class_name}(Scene):`, etc.) for the following request:\\n"
-            f"{prompt}\"\n"
-        )
+            """**Your generated code (after the helper definitions above) MUST:**\n""",
+            f"""1.  Follow with the Manim scene class definition: `class {manim_class_name}(Scene):`\n""",
+            """2.  Implement the `construct(self):` method for that class, using Manim v0.19.0 syntax based on the API guide and scene request below.\n""",
+            """3.  Use colors ONLY from the `mcolors` module as specified (e.g., `mcolors.RED`).\n\n""",
+
+            """**CRITICAL RULE for `Line` objects (and similar like `Arrow`) within your `construct` method:**\n""",
+            """   The `Line` constructor *always* requires `start` and `end` arguments. Both *MUST* be 3D points (e.g., `[x,y,z]` list or NumPy array like `np.array([1,1,0])`).\n""",
+            """   - Correct: `Line(start=[0,0,0], end=[1,2,3])` or `Line(ORIGIN, RIGHT)`\n""",
+            """   - **ABSOLUTELY INCORRECT**: `Line(-0.5, -0.5, 0)` if you mean `start=[-0.5,-0.5,0]`.
+""",
+            """   Always use `Line(start_point_array, end_point_array)` structure.\n\n""",
+
+            """**CRITICAL RULE for Mobject Layout (Stacking/Arranging) within your `construct` method:**\n""",
+            """   When arranging Mobjects (e.g., vertically): You should primarily use the provided `stack_mobjects_vertically` helper function, or Manim's built-in `VGroup(*item_list).arrange(DOWN, buff=...)`. Avoid inventing other layout functions.\n\n""",
+            
+            """**For ANY OTHER custom helper function** you invent for use within your `construct` method: It MUST be fully defined within the generated Python script, placed *inside* your Scene class if specific to it, or *before* your Scene class (after `from manim import *` and the mandatory helpers) if it's more general and doesn't conflict with provided helpers.\n\n""",
+
+            """**Output Format:** Your entire response MUST be a single block of raw Python code. Do NOT include any markdown formatting (like ```python at the start/end), explanations, or any other text outside of this single Python code block. The script must be directly executable after the boilerplate (containing helpers) is prepended.\n\n""",
+
+            """---BEGIN MANIM V0.19.0 API GUIDE (for reference when writing the Scene class logic)---\n""",
+            f"""{self.manim_api_guide_content}\n""",
+            """---END MANIM V0.19.0 API GUIDE---\n\n""",
+
+            f"""Now, using the above guide and API reference, generate the Manim Python code (starting with `from manim import *`, then the helper functions as defined above, then your class {manim_class_name}(Scene):, etc.) for the following request:\n""",
+            f"""{prompt}"""
+        ]
+        full_prompt = "".join(prompt_parts)
 
         logger.info(f"Generating Manim code for Scene {scene_number}: '{scene_title}' using model {config.OPENROUTER_MODEL_NAME}")
         # Log the full prompt for debugging (can be very long)
