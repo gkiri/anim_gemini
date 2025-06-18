@@ -527,9 +527,64 @@ def fit_mobject_in_zone(
     )
             
     mobject.move_to(get_zone_center(zone_name, zones))
+
+    if verbose:
+        print(f"fit_mobject_in_zone: Mobject {type(mobject).__name__} fitted and moved to center of {zone_name}.")
+
     return mobject
 
-# --- Advanced: Visual Debugging ---
+def stack_mobjects_vertically(
+    mobjects: list[Mobject],
+    buff: float = 0.25,
+    aligned_edge=LEFT,
+    center_point: np.ndarray | None = None,
+    to_corner: np.ndarray | None = None,
+    **kwargs
+) -> VGroup:
+    """
+    Arranges mobjects vertically, similar to VGroup().arrange(DOWN, ...),
+    but provides more explicit control and a common interface.
+    Returns a VGroup of the arranged mobjects.
+    """
+    if not mobjects:
+        return VGroup()
+    
+    group = VGroup(*mobjects)
+    group.arrange(DOWN, buff=buff, aligned_edge=aligned_edge, **kwargs)
+    
+    if center_point is not None:
+        group.move_to(center_point)
+    elif to_corner is not None:
+        group.move_to(to_corner, aligned_edge=to_corner - np.array([group.width/2 if to_corner[0] !=0 else 0, group.height/2 if to_corner[1] !=0 else 0 , 0]))
+
+    return group
+
+def stack_mobjects_horizontally(
+    mobjects: list[Mobject],
+    buff: float = 0.25,
+    aligned_edge=UP,
+    center_point: np.ndarray | None = None,
+    to_corner: np.ndarray | None = None,
+    **kwargs
+) -> VGroup:
+    """
+    Arranges mobjects horizontally, similar to VGroup().arrange(RIGHT, ...),
+    but provides more explicit control and a common interface.
+    Returns a VGroup of the arranged mobjects.
+    """
+    if not mobjects:
+        return VGroup()
+    
+    group = VGroup(*mobjects)
+    group.arrange(RIGHT, buff=buff, aligned_edge=aligned_edge, **kwargs)
+    
+    if center_point is not None:
+        group.move_to(center_point)
+    elif to_corner is not None:
+        group.move_to(to_corner, aligned_edge=to_corner - np.array([group.width/2 if to_corner[0] !=0 else 0, group.height/2 if to_corner[1] !=0 else 0 , 0]))
+
+    return group
+
 def display_zone_boundaries(scene, zones_to_display=None, color=PINK, stroke_width=2, temp_display_time=3):
     """
     Displays the boundaries of specified zones on the scene for debugging.

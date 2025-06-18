@@ -157,6 +157,8 @@ class VisualArchitect:
         final_script_lines.append("from manim import *")
         final_script_lines.append("from anim_gemini.layout_utils import *  # Ensured by VisualArchitect validator")
         final_script_lines.append("import anim_gemini.colors as mcolors # Ensured by VisualArchitect validator")
+        final_script_lines.append("import logging")
+        final_script_lines.append("logger = logging.getLogger(__name__) # Use module's logger, ensures consistency")
         
         # Scan original LLM core code for numpy usage to decide if we need to add its import
         numpy_import_needed = False
@@ -178,6 +180,8 @@ class VisualArchitect:
         exact_correct_layout_import_str = "from anim_gemini.layout_utils import *"
         exact_numpy_import_str = "import numpy as np"
         exact_mcolors_import_str = "import anim_gemini.colors as mcolors"
+        exact_logging_import_str = "import logging"
+        exact_logger_init_str = "logger = logging.getLogger(__name__)"
 
         for line_content in llm_core_code_lines:
             stripped_line = line_content.strip()
@@ -203,6 +207,14 @@ class VisualArchitect:
             
             if stripped_line == exact_mcolors_import_str:
                 logger.debug(f"Validator skipping redundant mcolors import line: '{line_content}'")
+                continue
+            
+            if stripped_line == exact_logging_import_str:
+                logger.debug(f"Validator skipping redundant logging import line: '{line_content}'")
+                continue
+
+            if stripped_line == exact_logger_init_str:
+                logger.debug(f"Validator skipping redundant logger initialization line: '{line_content}'")
                 continue
             
             final_script_lines.append(line_content)

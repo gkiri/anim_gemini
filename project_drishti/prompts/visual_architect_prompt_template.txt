@@ -1,23 +1,7 @@
-import sys
-import os
-from pathlib import Path
-
-# Path manipulation to allow importing anim_gemini.project_drishti
-# This script is assumed to be in a directory like: <workspace_root>/anim_gemini/outputs/generated_content/manim_scripts/
-# The project_drishti module is expected at: <workspace_root>/anim_gemini/project_drishti/
-# Thus, we add <workspace_root> to sys.path so 'anim_gemini.project_drishti...' can be imported.
-script_dir = Path(__file__).resolve().parent
-# To reach <workspace_root> from <workspace_root>/anim_gemini/outputs/generated_content/manim_scripts/
-# we go up 4 levels from 'manim_scripts' (scripts -> generated_content -> outputs -> anim_gemini -> <workspace_root>)
-# So, if project_root_for_import should be <workspace_root>, it's script_dir.parents[4]
-project_root_for_import = script_dir.parents[4] # Adjust this index if script location changes
-
-if str(project_root_for_import) not in sys.path:
-    sys.path.insert(0, str(project_root_for_import))
-
 from manim import *
-from anim_gemini.project_drishti.manim_layout_utils import * # Corrected import
-import numpy as np # If needed
+from anim_gemini.layout_utils import * # Core utilities for layout
+import anim_gemini.colors as mcolors # For standardized color palette
+import numpy as np # If needed for complex calculations
 
 You are an expert Manim programmer. Your task is to generate a complete, runnable Manim Python script for a single scene.
 The script should define a Manim Scene class named '{manim_class_name}'.
@@ -36,27 +20,14 @@ Narration/Key Points for this scene:
 '''{narration}'''
 
 Instructions for Manim code generation:
-1.  **Start with Boilerplate**: Begin the Python script with the following exact boilerplate. This ensures `layout_utils` can be found:
+1.  **Start with Boilerplate**: Begin the Python script with the following exact imports. NO other `sys.path` manipulation or imports should be at the top of the file:
     ```python
-    import sys
-    import os
-
-    # This script is typically in: APP_BASE_DIR/outputs/generated_content/manim_scripts/
-    # layout_utils.py is in: APP_BASE_DIR/layout_utils.py
-    # Add APP_BASE_DIR to sys.path to allow direct import of layout_utils.
-    script_absolute_path = os.path.abspath(__file__)
-    script_dir = os.path.dirname(script_absolute_path)
-    # Navigate three levels up from script_dir (manim_scripts -> generated_content -> outputs -> APP_BASE_DIR)
-    app_base_dir = os.path.abspath(os.path.join(script_dir, "..", "..", ".."))
-
-    if app_base_dir not in sys.path:
-        sys.path.insert(0, app_base_dir)
-
     from manim import *
-    from layout_utils import * # Core utilities for layout
+    from anim_gemini.layout_utils import * # Core utilities for layout
+    import anim_gemini.colors as mcolors # For standardized color palette
     import numpy as np # If needed for complex calculations
     ```
-2.  **Class Definition**: After the boilerplate, create a class `{manim_class_name}(Scene)`.
+2.  **Class Definition**: After the boilerplate, create a class `{manim_class_name}(Scene)`.\
 3.  **`construct(self)` Method**: Implement the `construct(self)` method within this class.
 4.  **Use `create_smart_text`**:
     - For the main scene title, use `create_smart_text("{scene_title}", zone_name="TITLE_AREA", font_size=OptionalLargeFontSize, max_font_size=OptionalMaxFontSize)`.
@@ -69,65 +40,72 @@ Instructions for Manim code generation:
 9.  **Animations**: Use smooth animations: FadeIn, FadeOut, Write, Create, Transform, LaggedStart.
 10. **Positioning**: Ensure all elements are properly positioned using zones and layout utilities.
 11. **Self-Contained Script**: The animation for this scene should be self-contained within the class structure defined after the boilerplate.
-12. **Imports**: The script MUST include the boilerplate imports: `from manim import *`, `from layout_utils import *`, and optionally `import numpy as np`. Do NOT add the `sys.path` manipulation code.
+12. **Imports**: The script MUST include ONLY the boilerplate imports: `from manim import *`, `from anim_gemini.layout_utils import *`, `import anim_gemini.colors as mcolors`, and optionally `import numpy as np`. Do NOT add any `sys.path` manipulation code or any other imports at the global level.
 13. **Python Code Block Only**: Output only the Python code block, starting with the boilerplate.
 14. **No External Files**: CRITICAL: Do NOT use `SVGMobject` or `ImageMobject` with placeholder file paths. Represent all visual elements using Manim's built-in shapes, `Text`, `Tex`, or `MathTex`. If suggesting an image, comment it out and provide a Manim shape-based fallback. Example: `# An icon of [concept] could be here. Using a Circle instead.` then `placeholder_icon = Circle(radius=0.5).move_to(get_zone_center("SOME_ZONE"))`.
 15. **Production Quality**: Strive for error-free Manim code.
 16. **Dynamic Scenes**: Use a variety of Manim objects and animations.
 17. **Represent Concepts**: Visually represent entities, people, or concepts using Manim's shape and text objects within the layout framework.
 18. **Pacing**: Aim for a typical scene length of 15-30 seconds.
+19. **Strict API Adherence and Error Prevention (Manim Community v0.19.0)**:
+    a.  **API Guide is Absolute Law**: You MUST **ONLY** use classes, methods, functions, and keyword arguments that are explicitly defined in the `manim_v0.19.0_api_guide.md`. Any deviation will cause the script to fail. This is the most critical rule.
+    b.  **Color Protocol**: All colors MUST be from `anim_gemini.colors` (imported as `mcolors`). Refer to colors using `mcolors.COLOR_NAME` (e.g., `mcolors.BLUE`, `mcolors.TEAL_E`, `mcolors.WHITE`). **DO NOT use raw hex strings directly in the Manim script.** All necessary colors are defined in `mcolors`. Do not use Manim's global color names (e.g., `RED`, `BLUE`) directly; always prefix with `mcolors.` (e.g., `mcolors.RED`).
+    c.  **Forbidden Keywords & Features**: Critically, DO NOT use any classes, methods, functions, animations, or keyword arguments that are NOT explicitly listed in the `manim_v0.19.0_api_guide.md` or provided in `anim_gemini.layout_utils.py`. Hallucinating features is a major error source.
+        *   **Example - Invalid Animation**: DO NOT use animations like `Flare`. It's not in Manim v0.19.0. Stick to animations listed in the guide (e.g., `Create`, `FadeIn`, `Transform`).
+        *   **Example - Invalid Keyword Arguments**: The `Line` mobject constructor does NOT accept an `opacity` keyword argument (e.g., `Line(start=LEFT, end=RIGHT, opacity=0.5)` is WRONG). To control opacity: create the line first, then use `my_line.set_opacity(0.5)` and then `self.add(my_line)` or `self.play(Create(my_line))`. Alternatively, animate the opacity change using `self.play(my_line.animate.set_opacity(0.5))` or `self.play(ApplyMethod(my_line.set_opacity, 0.5))`. Always verify keyword arguments from the API guide for EACH mobject and animation.
+        *   **Example - Correct Keyword for Star**: The `Star` mobject uses `n` for the number of points (e.g., `Star(n=5)`), NOT `n_points`.
+    d.  **Correct Keyword Usage**: Double-check ALL keyword arguments (e.g., `color`, `fill_opacity`, `stroke_width`, `font_size`, `tex_environment`) for every Mobject and animation against the API guide. Ensure they are spelled correctly and are valid for that specific mobject/animation.
+    e.  **Object Structures**: If creating complex mobjects or using helper functions that return mobjects or dictionaries (e.g., `my_dict = helper_func()`), ensure you access their components (e.g., `my_dict['key']`, `my_vgroup[index]`) correctly based on how they were actually defined by the helper function or Manim. Do not assume keys or indices that don't exist.
+    f.  **Animation Syntax**: Be extremely careful with animation syntax.
+        *   **BAD**: `self.play(square.shift(UP))` (This calls `shift` immediately; `self.play` might not animate as intended).
+        *   **GOOD**: `self.play(square.animate.shift(UP))`
+        *   **GOOD**: `self.play(ApplyMethod(square.shift, UP))`
+        Refer to the API guide's "Common Pitfalls" section for more examples and explanations.
+    g.  **Chaining `.animate` Calls**: Avoid chaining multiple `.animate` transformations in a single `self.play` call, like `self.play(my_obj.animate.shift(UP).scale(2))`, as this often leads to unexpected behavior or errors. For applying multiple transformations simultaneously to achieve a combined final state, the preferred method is to use `mobject.generate_target()`, modify the `.target` attribute, and then animate with `self.play(MoveToTarget(mobject))`.
+    h.  **Custom Utilities Adherence**: Only use helper functions that are explicitly imported from `anim_gemini.layout_utils` (e.g., `create_smart_text`, `get_zone_center`, `stack_mobjects_vertically`). Do not invent or call other custom functions unless they are part of this provided utility module.
+    i.  **NO CUSTOM LOGGING**: Do NOT add any Python `logging` module calls (e.g., `logging.getLogger(...)`, `logger.info(...)`, etc.) into the generated Manim script. The scripts should not configure or use the `logging` module. Manim handles its own logging.
+20. **Self-Contained and Runnable**: The final script must be a single, complete Python code block that is immediately runnable, starting with the specified boilerplate, defining the class, and implementing the `construct` method.
 
-Example of structure (the code you generate should look like this):
+Example of structure (the code you generate should look like this):\
 ```python
-import sys
-import os
-
-# This script is typically in: APP_BASE_DIR/outputs/generated_content/manim_scripts/
-# layout_utils.py is in: APP_BASE_DIR/layout_utils.py
-# Add APP_BASE_DIR to sys.path to allow direct import of layout_utils.
-script_absolute_path = os.path.abspath(__file__)
-script_dir = os.path.dirname(script_absolute_path)
-# Navigate three levels up from script_dir (manim_scripts -> generated_content -> outputs -> APP_BASE_DIR)
-app_base_dir = os.path.abspath(os.path.join(script_dir, "..", "..", ".."))
-
-if app_base_dir not in sys.path:
-    sys.path.insert(0, app_base_dir)
-
 from manim import *
-from layout_utils import * # Core utilities for layout
+from anim_gemini.layout_utils import * # Core utilities for layout
+import anim_gemini.colors as mcolors # For standardized color palette
 import numpy as np # If needed
 
 class {manim_class_name}(Scene):
     def construct(self):
-        # title_text = Text("{scene_title}").to_edge(UP) # Old way
+        # title_text = Text(\"{scene_title}\").to_edge(UP) # Old way
         title_mobject = create_smart_text(
-            "{scene_title}",
-            zone_name="TITLE_AREA",
+            \"{scene_title}\",
+            zone_name=\"TITLE_AREA\",
             font_size=48, # Example font size
-            max_font_size=60
+            max_font_size=60,
+            color=mcolors.WHITE # Example using mcolors
         )
         self.play(Write(title_mobject))
 
         # Example: Narration text at the bottom
         narration_mobject = create_smart_text(
-            "This scene explains key concepts using smart text and zones.",
-            zone_name="NARRATION_AREA",
-            font_size=28
+            \"This scene explains key concepts using smart text and zones.\",
+            zone_name=\"NARRATION_AREA\",
+            font_size=28,
+            color=mcolors.GRAY_A # Example using mcolors for secondary text
         )
         self.play(FadeIn(narration_mobject, shift=UP))
 
         # Example: Content in main area
-        concept1 = create_smart_text("Concept 1", target_zone_width=get_zone_width("MAIN_CONTENT_AREA")*0.4, font_size=32)
-        concept_shape = Circle(radius=1, color=BLUE).next_to(concept1, DOWN, buff=0.5)
+        concept1 = create_smart_text(\"Concept 1\", target_zone_width=get_zone_width(\"MAIN_CONTENT_AREA\")*0.4, font_size=32)
+        concept_shape = Circle(radius=1, color=mcolors.BLUE).next_to(concept1, DOWN, buff=0.5)
         
-        main_content_group = VGroup(concept1, concept_shape).move_to(get_zone_center("MAIN_CONTENT_AREA"))
+        main_content_group = VGroup(concept1, concept_shape).move_to(get_zone_center(\"MAIN_CONTENT_AREA\"))
         # Or use stack_mobjects_vertically if they were separate items for stacking:
         # items_to_stack = [concept1, concept_shape]
-        # main_content_group = stack_mobjects_vertically(items_to_stack, center_point=get_zone_center("MAIN_CONTENT_AREA"))
+        # main_content_group = stack_mobjects_vertically(items_to_stack, center_point=get_zone_center(\"MAIN_CONTENT_AREA\"))
 
         self.play(Create(main_content_group))
         
         self.wait(2)
 ```
 
-Now, generate the Manim Python code for scene '{scene_title}', adhering strictly to using 'layout_utils'. 
+Now, generate the Manim Python code for scene \'{scene_title}\', adhering strictly to using \'layout_utils\', the specified `mcolors`, and the Manim v0.19.0 API guide. 
