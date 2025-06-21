@@ -49,6 +49,11 @@ if not os.path.exists(VISUAL_ARCHITECT_PROMPT_TEMPLATE_PATH):
     print(f"Please ensure the file exists. Calculated APP_BASE_DIR: {APP_BASE_DIR}")
     # Optionally, raise an exception here to halt execution if it's critical
 
+# Path for Visual Architect Fix Prompt Template
+VISUAL_ARCHITECT_FIX_PROMPT_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "prompts", "visual_architect_fix_prompt.txt")
+if not os.path.exists(VISUAL_ARCHITECT_FIX_PROMPT_TEMPLATE_PATH):
+    print(f"CRITICAL ERROR: Visual Architect fix prompt template not found at expected path: {VISUAL_ARCHITECT_FIX_PROMPT_TEMPLATE_PATH}")
+
 # Path for Didactic Scripter Prompt Template
 DIDACTIC_SCRIPTER_PROMPT_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "prompts", "didactic_scripter_prompt_template.txt")
 

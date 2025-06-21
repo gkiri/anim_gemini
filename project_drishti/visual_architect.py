@@ -52,6 +52,8 @@ class VisualArchitect:
         self.prompt_template = self._load_prompt_template()
         # Load the Manim API guide
         self.manim_api_guide_content = self._load_manim_api_guide()
+        # Load the fix prompt template
+        self.fix_prompt_template = self._load_fix_prompt_template()
 
     def _load_prompt_template(self) -> str:
         """Loads the prompt template from the file specified in config."""
@@ -72,6 +74,23 @@ class VisualArchitect:
         except Exception as e:
             logger.error(f"CRITICAL: Error loading prompt template from {template_path}: {e}. Falling back to basic prompt.")
             return "Generate a Manim scene class {manim_class_name}(Scene) for topic '{topic_title}', scene '{scene_title}', narration: '''{narration}'''."
+
+    def _load_fix_prompt_template(self) -> str:
+        """Loads the fix prompt template from the file specified in config."""
+        template_path = config.VISUAL_ARCHITECT_FIX_PROMPT_TEMPLATE_PATH
+        if not os.path.isabs(template_path):
+            pass
+
+        try:
+            with open(template_path, "r") as f:
+                return f.read()
+        except FileNotFoundError:
+            logger.error(f"CRITICAL: Visual Architect fix prompt template not found at {template_path}. Fix functionality will be impaired.")
+            # Fallback to a very basic prompt if template is missing - this is not ideal for fixing
+            return "Fix the following Manim code: {faulty_code}. Error was: {error_message}. Original scene: {scene_title}, narration: {narration}."
+        except Exception as e:
+            logger.error(f"CRITICAL: Error loading fix prompt template from {template_path}: {e}. Fix functionality will be impaired.")
+            return "Fix the following Manim code: {faulty_code}. Error was: {error_message}. Original scene: {scene_title}, narration: {narration}."
 
     def _load_manim_api_guide(self) -> str:
         """Loads the Manim API guide from the specified path relative to the workspace root."""
@@ -438,6 +457,11 @@ class VisualArchitect:
                 temperature=config.LLM_DEFAULT_TEMPERATURE,
                 # As per user's reference, reasoning_effort might be specific to some models
                 # For general OpenAI API, it's not standard. OpenRouter might handle it.
+                # extra_body={
+                #     "reasoning": {
+                #         "max_tokens": 2000
+                #     }
+                # },
                 extra_headers={
                     "HTTP-Referer": config.OPENROUTER_SITE_URL,
                     "X-Title": config.OPENROUTER_APP_NAME,
@@ -485,6 +509,110 @@ class VisualArchitect:
             logger.warning(f"Failed to write debug MD file to {md_output_path}: {e}")
 
         return script_file_path, manim_class_name
+
+    def fix_manim_code_for_scene(
+        self, 
+        scene_data: dict, 
+        topic_title: str, 
+        faulty_code_content: str, 
+        error_message: str
+    ) -> tuple[str | None, str | None]:
+        """
+        Attempts to fix a faulty Manim script using the LLM based on an error message.
+
+        Args:
+            scene_data (dict): The original scene data (title, narration, scene_number).
+            topic_title (str): The title of the overall topic.
+            faulty_code_content (str): The content of the Manim script that failed.
+            error_message (str): The error message captured from the Manim execution.
+
+        Returns:
+            tuple[str | None, str | None]: Path to the corrected .py file and the Manim class name, or (None, None) on failure.
+        """
+        if not self.client:
+            logger.error("OpenRouter client not initialized. Cannot fix Manim script.")
+            return None, None
+
+        scene_title = scene_data.get("title", "UnknownScene")
+        narration = scene_data.get("narration", "No narration provided.")
+        # Ensure a unique class name for the scene, potentially based on scene number
+        # Using the original class name is important for the fix prompt
+        original_manim_class_name = self._generate_manim_class_name(scene_title, scene_data.get("scene_number", ""))
+        
+        logger.info(f"Attempting to fix Manim script for scene: '{scene_title}' using LLM.")
+        logger.debug(f"Faulty code provided:\n{faulty_code_content[:500]}...") # Log beginning of faulty code
+        logger.debug(f"Error message provided:\n{error_message}")
+
+        prompt = self.fix_prompt_template.format(
+            topic_title=topic_title,
+            scene_title=scene_title,
+            narration=narration,
+            manim_class_name=original_manim_class_name, # Use original class name
+            faulty_code=faulty_code_content,
+            error_message=error_message
+        )
+        
+        # Save the detailed prompt for debugging this "fix" attempt
+        prompt_debug_filename = f"visual_architect_fix_prompt_scene_{self._sanitize_filename(scene_title)}.md"
+        prompt_debug_path = os.path.join(self.output_md_dir, prompt_debug_filename)
+        try:
+            with open(prompt_debug_path, "w") as f:
+                f.write(prompt)
+            logger.info(f"Saved fix prompt for scene '{scene_title}' to: {prompt_debug_path}")
+        except Exception as e:
+            logger.warning(f"Could not save fix prompt debug file: {e}")
+
+        corrected_code_raw = self._call_llm(prompt, f"Manim Script Fix for {scene_title}", default_response_on_error="")
+
+        if not corrected_code_raw:
+            logger.error(f"LLM failed to return a corrected script for scene '{scene_title}'.")
+            return None, None
+
+        cleaned_code = self._clean_generated_code(corrected_code_raw)
+        
+        if not cleaned_code:
+            logger.error(f"Cleaned code is empty for scene '{scene_title}' after attempting fix.")
+            return None, None
+            
+        # The class name should ideally remain the same after a fix.
+        # We pass the original_manim_class_name for validation and saving.
+        # The _validate_and_fix_manim_code method will ensure it's there or attempt to structure it.
+        # The _extract_class_name_and_save_script method can then confirm or extract it.
+
+        # At this stage, the class name IS the original_manim_class_name
+        # because the prompt asks to fix the class with that name.
+        # The validation step later might re-confirm this.
+        current_class_name_for_validation = original_manim_class_name
+
+        logger.info(f"Validating and applying standard fixes to the LLM's corrected code for scene '{scene_title}' using class name '{current_class_name_for_validation}'.")
+        final_code = self._validate_and_fix_manim_code(cleaned_code, current_class_name_for_validation)
+        
+        if not final_code:
+            logger.error(f"Validation of corrected code failed for scene '{scene_title}'.")
+            return None, None
+
+        # Re-use the original scene_title and scene_number for filename generation
+        # to overwrite the faulty script.
+        # The class name used for saving should be the one confirmed/extracted.
+        # The _extract_class_name_and_save_script uses the scene_title and scene_data for file naming.
+        # It also extracts the class name from the final_code.
+
+        logger.info(f"Attempting to save corrected Manim script for scene: {scene_title}")
+        script_path, extracted_manim_class_name = self._extract_class_name_and_save_script(
+            final_code, 
+            scene_title, # Used for filename
+            scene_data, # Used for filename, contains scene_number
+            original_manim_class_name # Pass as a hint for extraction if needed
+        )
+
+        if script_path and extracted_manim_class_name:
+            logger.info(f"Successfully fixed and saved Manim script for scene '{scene_title}' to: {script_path}, Class: {extracted_manim_class_name}")
+            if extracted_manim_class_name != original_manim_class_name:
+                 logger.warning(f"The class name after fix ('{extracted_manim_class_name}') differs from the original ('{original_manim_class_name}') for scene '{scene_title}'. This might be unexpected.")
+            return script_path, extracted_manim_class_name
+        else:
+            logger.error(f"Failed to save the corrected script or extract class name for scene '{scene_title}'.")
+            return None, None
 
 
 if __name__ == '__main__':

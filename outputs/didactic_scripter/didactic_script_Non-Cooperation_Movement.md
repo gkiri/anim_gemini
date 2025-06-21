@@ -3,28 +3,28 @@
     "scenes": [
         {
             "scene_number": 1,
-            "title": "Seeds of Discontent",
-            "narration": "After World War I, Indians expected political reforms from Britain. Instead, the Rowlatt Act continued repressive measures. Then came the Jallianwala Bagh massacre in 1919 \u2013 British troops fired on unarmed civilians. This brutality ignited nationwide outrage. Mahatma Gandhi, advocating non-violent resistance, saw a nation ready for change. He proposed a radical idea: withdraw cooperation from British institutions to expose their moral bankruptcy and paralyze their rule."
+            "title": "The Spark of Discontent",
+            "narration": "Post-World War I, India seethed with frustration. Despite sacrifices made by Indian soldiers for Britain, the Rowlatt Act allowed indefinite detention without trial. The horrific Jallianwala Bagh massacre in 1919, where British troops fired on unarmed civilians, became the final straw. This scene shows Indian leaders and citizens grappling with broken promises, setting the stage for a powerful response."
         },
         {
             "scene_number": 2,
-            "title": "The Call to Action",
-            "narration": "In 1920, Gandhi formally launched the Non-Cooperation Movement. Millions answered his call. Students left government schools, lawyers quit British courts, and citizens resigned from official positions. People boycotted British goods \u2013 foreign cloth was burned in bonfires, replaced by homespun khadi. Elections were shunned, and titles bestowed by the British were surrendered. The movement transformed from elite circles to a mass uprising, uniting peasants, workers, and students across India."
+            "title": "Gandhi's Call to Action",
+            "narration": "Enter Mahatma Gandhi, advocating non-violent resistance. In 1920, he launches the Non-Cooperation Movement with a clear strategy: withdraw support from British institutions. We see Gandhi passionately urging Indians to boycott British schools, courts, and goods. The spinning wheel emerges as a symbol of self-reliance, while thousands return medals and titles in a collective rejection of colonial authority."
         },
         {
             "scene_number": 3,
-            "title": "Building Parallel Systems",
-            "narration": "Withdrawal wasn't just protest \u2013 it was construction. Indians built alternative systems. National schools and colleges opened, teaching pride in Indian culture. Panchayats (local councils) resolved disputes instead of British courts. People's committees managed community affairs. Hand-spinning became a symbol of self-reliance, with charkhas humming in villages. This parallel governance weakened British authority and empowered communities, showing India could function independently."
+            "title": "Nationwide Mobilization",
+            "narration": "The movement ignites like wildfire across India. Students abandon classrooms, lawyers quit courts, and workers go on strike. Villagers boycott foreign cloth, lighting bonfires of imported textiles. Hindu-Muslim unity strengthens as people march together. This scene depicts mass rallies, homemade khadi production, and the emergence of local leadership \u2013 showing how ordinary citizens paralyzed the colonial machinery through peaceful non-participation."
         },
         {
             "scene_number": 4,
-            "title": "Chauri Chaura and Suspension",
-            "narration": "In February 1922, the movement faced a crisis. Protesters clashed with police in Chauri Chaura, Uttar Pradesh. A police station was set ablaze, killing 22 officers. Gandhi, horrified by the violence, suspended the movement immediately. He argued that non-violence was sacrosanct \u2013 any compromise would corrupt the struggle. While many supporters were dismayed, Gandhi fasted to atone and redirected efforts towards social reform like eradicating untouchability."
+            "title": "The Chauri Chaura Turning Point",
+            "narration": "In February 1922, violence erupts in Chauri Chaura when protesters clash with police, leading to deaths. Devastated by this breach of non-violence, Gandhi makes the controversial decision to suspend the movement. This scene dramatizes the tragedy, Gandhi's moral dilemma, and the fractured public reaction \u2013 from disillusionment to renewed determination among freedom fighters."
         },
         {
             "scene_number": 5,
-            "title": "Legacy of Defiance",
-            "narration": "Though suspended, the movement reshaped India's freedom struggle. It demonstrated the power of mass non-violent resistance, bringing millions into politics for the first time. British prestige and economy suffered as Indians reclaimed agency. It proved Gandhi's methods could challenge an empire, inspiring future campaigns. Most importantly, it forged a unified national identity, transforming the demand for reform into an unstoppable cry for complete independence."
+            "title": "Enduring Legacy",
+            "narration": "Though suspended, the movement transformed India's freedom struggle. It demonstrated the power of mass mobilization and made independence an attainable goal. Colonial revenues plummeted while national pride soared. We see how it paved the way for future movements, inspired global civil rights leaders, and proved that non-violent resistance could shake an empire. Final shots show the tricolor flag rising as Gandhi's spinning wheel keeps turning."
         }
     ]
 }\n```\n

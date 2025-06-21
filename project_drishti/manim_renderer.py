@@ -42,17 +42,19 @@ class ManimRenderer:
         # Also ensure the directory where we expect to find scripts exists
         os.makedirs(self.scripts_input_dir, exist_ok=True) 
 
-    def render_scene(self, script_path: str, scene_class_name: str) -> str | None:
+    def render_scene(self, script_path: str, scene_class_name: str) -> tuple[bool, str | None, str | None]:
         """
         Renders a specific scene from a Manim script file.
 
         Args:
             script_path (str): Absolute or relative path to the Manim .py script.
-                               This path should be within self.scripts_input_dir ideally.
             scene_class_name (str): The name of the Scene class in the script to render.
 
         Returns:
-            str | None: The path to the rendered .mp4 video file if successful, else None.
+            tuple[bool, str | None, str | None]: A tuple containing:
+                - bool: True if rendering was successful, False otherwise.
+                - str | None: The path to the rendered .mp4 video file if successful, else None.
+                - str | None: The stderr output from Manim if an error occurred, else None.
         """
         if not os.path.isabs(script_path):
             # If script_path is relative, assume it's relative to MANIM_SCRIPTS_DIR
@@ -63,7 +65,7 @@ class ManimRenderer:
 
         if not os.path.exists(script_path):
             logger.error(f"Manim script not found at: {script_path}")
-            return None
+            return False, None, f"Manim script not found at: {script_path}"
 
         script_filename_no_ext = os.path.splitext(os.path.basename(script_path))[0]
         
@@ -141,22 +143,26 @@ class ManimRenderer:
             if process.returncode == 0:
                 if os.path.exists(expected_video_full_path):
                     logger.info(f"Manim scene '{scene_class_name}' rendered successfully: {expected_video_full_path}")
-                    return expected_video_full_path
+                    return True, expected_video_full_path, None
                 else:
-                    logger.error(f"Manim process completed (exit code 0), but video file not found at expected path: {expected_video_full_path}")
+                    error_msg = f"Manim process completed (exit code 0), but video file not found at expected path: {expected_video_full_path}"
+                    logger.error(error_msg)
                     logger.error("Possible issues: Manim's output structure changed, error in script despite exit code 0, or class name mismatch.")
                     logger.error("Please check Manim logs in the media_dir/logs/ directory.")
-                    return None
+                    return False, None, error_msg
             else:
-                logger.error(f"Manim rendering failed for scene '{scene_class_name}' with exit code {process.returncode}.")
-                return None
+                error_msg = f"Manim rendering failed for scene '{scene_class_name}' with exit code {process.returncode}."
+                logger.error(error_msg)
+                return False, None, process.stderr # Return stderr on failure
 
         except FileNotFoundError:
-            logger.error("Manim command not found. Please ensure Manim is installed and in your system PATH.")
-            return None
+            error_msg = "Manim command not found. Please ensure Manim is installed and in your system PATH."
+            logger.error(error_msg)
+            return False, None, error_msg
         except Exception as e:
-            logger.error(f"An unexpected error occurred during Manim rendering for '{scene_class_name}': {e}")
-            return None
+            error_msg = f"An unexpected error occurred during Manim rendering for '{scene_class_name}': {e}"
+            logger.error(error_msg)
+            return False, None, error_msg
 
 if __name__ == '__main__':
     print("Testing ManimRenderer...")
@@ -198,13 +204,15 @@ class {dummy_class_name}(Scene):
         logger.error(f"Failed to create dummy script {dummy_script_path}: {e}")
         exit() # Cant proceed with test if script not created
 
-    video_file = renderer.render_scene(dummy_script_path, dummy_class_name)
+    success, video_file, error_output = renderer.render_scene(dummy_script_path, dummy_class_name)
 
-    if video_file:
+    if success and video_file:
         logger.info(f"\nSuccessfully rendered video: {video_file}")
         logger.info(f"Please check the output in: {renderer.base_media_dir}")
     else:
         logger.error("\nFailed to render video. Check logs above and in the media_dir/logs directory.")
+        if error_output:
+            logger.error(f"Manim Renderer Error Output:\n{error_output}")
 
     # Note: The dummy script and its output video/logs will remain for inspection.
     # You might want to clean them up manually or add cleanup logic if running tests repeatedly. 
