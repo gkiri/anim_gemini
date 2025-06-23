@@ -13,6 +13,7 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 OPENROUTER_SITE_URL = os.getenv("OPENROUTER_SITE_URL", "http://localhost:3000")
 OPENROUTER_APP_NAME = os.getenv("OPENROUTER_APP_NAME", "ProjectDrishti")
 OPENROUTER_MODEL_NAME = os.getenv("OPENROUTER_MODEL_NAME", "deepseek/deepseek-r1-0528")
+OPENROUTER_PROVIDER_ORDER = os.getenv("OPENROUTER_PROVIDER_ORDER", "groq")
 
 # Manim settings
 GENERATED_CONTENT_BASE = "outputs"

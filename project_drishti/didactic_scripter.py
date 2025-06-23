@@ -124,6 +124,12 @@ class DidacticScripter:
                 ],
                 temperature=config.LLM_DEFAULT_TEMPERATURE,
                 # Consider adding other parameters like max_tokens if necessary
+                extra_body={
+                    "provider": {
+                        "only": [config.OPENROUTER_PROVIDER_ORDER],
+                        "allow_fallbacks": False
+                    }
+                }
             )
             
             raw_response_content = completion.choices[0].message.content
