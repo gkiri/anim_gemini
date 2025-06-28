@@ -16,6 +16,7 @@ from functools import partial
 from project_drishti.didactic_scripter import DidacticScripter
 from project_drishti.visual_architect import VisualArchitect
 from project_drishti.manim_renderer import ManimRenderer
+from project_drishti.video_analyzer import VideoAnalyzer
 from project_drishti import config # To check for API key and use settings
 
 # Setup basic logging
@@ -57,6 +58,7 @@ async def render_scene_with_retries(
     original_scene_data: dict,
     architect_instance: VisualArchitect,
     renderer_instance: ManimRenderer,
+    video_analyzer_instance: VideoAnalyzer,
     loop: asyncio.AbstractEventLoop,
     topic_title_str: str,
     max_retries: int = MAX_RENDER_ATTEMPTS
@@ -64,19 +66,18 @@ async def render_scene_with_retries(
     current_script_path = initial_script_path
     current_manim_class_name = initial_manim_class_name
     scene_title = original_scene_data.get("title", "Unknown Scene")
+    scene_narration = original_scene_data.get("script_content", "") # Use script_content as narration
 
     for attempt in range(max_retries):
         logger.info(
-            f"Attempt {attempt + 1}/{max_retries} for scene '{scene_title}'. Current script: {current_script_path}"
+            f"Processing attempt {attempt + 1}/{max_retries} for scene '{scene_title}'."
         )
-        
-        # Step 1: Ensure script exists. If not, try to generate it.
+
+        # Ensure script exists, if not, generate it.
         if not current_script_path or not os.path.exists(current_script_path):
-            logger.warning(
-                f"Script '{current_script_path}' not found for scene '{scene_title}'. "
-                f"Attempting generation (within attempt {attempt + 1})."
-            )
+            logger.warning(f"Script not found for '{scene_title}'. Attempting to generate.")
             try:
+                # This is a blocking call, run in executor
                 gen_script_path, gen_manim_class_name, _ = await loop.run_in_executor(
                     None,
                     partial(
@@ -86,145 +87,91 @@ async def render_scene_with_retries(
                         topic_title_str
                     )
                 )
-                if gen_script_path and gen_manim_class_name:
-                    logger.info(f"Successfully (re)generated script: {gen_script_path}")
-                    current_script_path = gen_script_path
-                    current_manim_class_name = gen_manim_class_name
-                else:
-                    logger.error(f"Failed to (re)generate script for scene '{scene_title}'.")
-                    if attempt >= max_retries - 1: # If this was the last chance
-                        logger.error(f"Max attempts reached and failed to generate script for '{scene_title}'.")
-                        return None
-                    logger.info("Skipping to next attempt due to failed generation.")
-                    continue # Skip to next attempt if generation failed but attempts remain
-            except Exception as e_gen_initial:
-                logger.error(f"Exception during initial/missing script generation for scene '{scene_title}': {e_gen_initial}.")
-                if attempt >= max_retries - 1:
-                    logger.error(f"Max attempts reached after exception during script generation for '{scene_title}'.")
-                    return None
-                logger.info("Skipping to next attempt due to exception in generation.")
-                continue # Skip to next attempt
+                if not (gen_script_path and gen_manim_class_name):
+                    raise ValueError("Script generation failed to return a valid path or class name.")
+                current_script_path, current_manim_class_name = gen_script_path, gen_manim_class_name
+                logger.info(f"Successfully generated script: {current_script_path}")
+            except Exception as e:
+                logger.error(f"FATAL: Could not generate script for '{scene_title}' on attempt {attempt + 1}: {e}")
+                continue # Move to the next attempt
 
-        # If script is still missing after trying to generate, this attempt cannot proceed to render.
+        # If script is still missing, we can't proceed with this attempt.
         if not current_script_path or not os.path.exists(current_script_path):
-            logger.error(
-                f"Script for scene '{scene_title}' still missing after generation attempt. "
-                f"Skipping render in attempt {attempt + 1}."
-            )
-            if attempt >= max_retries - 1:
-                logger.error(f"Max attempts reached and script for '{scene_title}' is definitively missing.")
-                return None
-            logger.info("Skipping to next attempt as script is missing.")
+            logger.error(f"Script for '{scene_title}' is missing after generation attempt. Skipping to next retry.")
             continue
-        
-        # Step 2: Try to render the current script
-        logger.info(
-            f"Rendering scene '{scene_title}' using script: {current_script_path} (Attempt {attempt + 1})"
-        )
-        success, video_file_path, error_output = await loop.run_in_executor(
-            None, 
+
+        # Try to render the video
+        logger.info(f"Rendering '{scene_title}' from {current_script_path}...")
+        render_success, video_path, render_error = await loop.run_in_executor(
+            None,
             renderer_instance.render_scene,
             current_script_path,
             current_manim_class_name
         )
 
-        if success:
-            logger.info(f"Successfully rendered video for scene '{scene_title}': {video_file_path}")
-            return video_file_path
-        
-        # Step 3: Render failed.
-        logger.error(
-            f"Failed to render scene '{scene_title}' (attempt {attempt + 1}/{max_retries}) "
-            f"from script {current_script_path}. Error: {error_output if error_output else 'No error output captured.'}"
-        )
+        # If rendering is successful, analyze the video
+        if render_success:
+            logger.info(f"Successfully rendered '{scene_title}' to {video_path}.")
+            logger.info(f"Analyzing video quality for '{scene_title}'...")
 
-        if attempt >= max_retries - 1: # No more attempts left
-            logger.error(f"Max render attempts reached for scene '{scene_title}'. Last error: {error_output}")
-            return None
+            analysis_passed, analysis_reason = await loop.run_in_executor(
+                None,
+                video_analyzer_instance.analyze_and_report,
+                video_path,
+                scene_narration,
+            )
 
-        # --- Recovery Phase for the *next* attempt (Fixing or Regenerating) ---
-        recovered_script_for_next_attempt = False
-        previous_script_path_before_recovery = current_script_path # For deletion logic
+            if analysis_passed:
+                logger.info(f"SUCCESS: Video for '{scene_title}' passed quality analysis. Reason: {analysis_reason}")
+                # Clean up intermediate script if a fix had created a new one
+                if initial_script_path and current_script_path != initial_script_path and os.path.exists(initial_script_path):
+                    os.remove(initial_script_path)
+                return video_path
+            else:
+                logger.warning(f"Video for '{scene_title}' FAILED quality analysis. Reason: {analysis_reason}")
+                render_success = False # Mark as failed to trigger recovery
+                render_error = analysis_reason # Use analysis reason as the error for the fix prompt
 
-        # Try to fix if there's an error and the script file exists
-        if error_output and current_script_path and os.path.exists(current_script_path):
-            logger.info(f"Attempting to fix script {current_script_path} for scene '{scene_title}'.")
-            faulty_script_content = ""
+        # If rendering or analysis failed
+        if not render_success:
+            logger.error(f"Failed to produce a good quality video for '{scene_title}' on attempt {attempt + 1}. Error: {render_error}")
+
+            if attempt >= max_retries - 1:
+                logger.critical(f"Max retries reached for '{scene_title}'. Moving on.")
+                break # Exit loop
+
+            # Attempt to fix the script for the next iteration
+            logger.info(f"Attempting to fix script for '{scene_title}'...")
             try:
                 with open(current_script_path, 'r') as f:
-                    faulty_script_content = f.read()
-            except Exception as e_read:
-                logger.error(f"Could not read faulty script {current_script_path} for fixing: {e_read}")
-                faulty_script_content = None 
+                    faulty_code = f.read()
 
-            if faulty_script_content:
-                try:
-                    fixed_script_path, fixed_manim_class_name, _ = await loop.run_in_executor(
-                        None, 
-                        partial(
-                            fix_manim_script_for_scene_wrapper, 
-                            architect_instance, 
-                            original_scene_data, 
-                            topic_title_str, 
-                            faulty_script_content, 
-                            error_output
-                        )
-                    )
-                    if fixed_script_path and fixed_manim_class_name:
-                        logger.info(f"Successfully fixed script for scene '{scene_title}'. New script at {fixed_script_path}.")
-                        # Deletion of old script will be handled if VisualArchitect overwrites or if path changes
-                        current_script_path = fixed_script_path
-                        current_manim_class_name = fixed_manim_class_name
-                        recovered_script_for_next_attempt = True
-                        if previous_script_path_before_recovery != fixed_script_path and os.path.exists(previous_script_path_before_recovery):
-                            try:
-                                os.remove(previous_script_path_before_recovery)
-                                logger.info(f"Deleted old script {previous_script_path_before_recovery} after successful fix to new path.")
-                            except OSError as e_del_fix:
-                                logger.warning(f"Could not delete old script {previous_script_path_before_recovery} after fix: {e_del_fix}")
-                    else:
-                        logger.warning(f"Fix attempt for script {current_script_path} for scene '{scene_title}' did not yield a new script.")
-                except Exception as e_fix:
-                    logger.error(f"Exception during script fix for scene '{scene_title}': {e_fix}.")
-        
-        # If not recovered by fixing, try full regeneration for the next attempt
-        if not recovered_script_for_next_attempt:
-            logger.info(f"Attempting full regeneration for scene '{scene_title}' as fix was not successful or not attempted.")
-            try:
-                regen_script_path, regen_manim_class_name, _ = await loop.run_in_executor(
-                    None, 
+                fixed_script_path, fixed_class_name, _ = await loop.run_in_executor(
+                    None,
                     partial(
-                        generate_manim_script_for_scene_wrapper,
+                        fix_manim_script_for_scene_wrapper,
                         architect_instance,
                         original_scene_data,
-                        topic_title_str
+                        topic_title_str,
+                        faulty_code,
+                        render_error
                     )
                 )
-                if regen_script_path and regen_manim_class_name:
-                    logger.info(f"Successfully regenerated script for scene '{scene_title}': {regen_script_path}")
-                    # Deletion of old script
-                    if previous_script_path_before_recovery != regen_script_path and os.path.exists(previous_script_path_before_recovery):
-                         try:
-                             os.remove(previous_script_path_before_recovery)
-                             logger.info(f"Deleted old script {previous_script_path_before_recovery} after successful regeneration to new path.")
-                         except OSError as e_del_regen:
-                             logger.warning(f"Could not delete old script {previous_script_path_before_recovery} after regeneration: {e_del_regen}")
-                    current_script_path = regen_script_path
-                    current_manim_class_name = regen_manim_class_name
-                    # Script is now set for the *next* attempt in the loop
-                else:
-                    logger.error(f"Full regeneration also failed for scene '{scene_title}'. Script path remains '{current_script_path}'.")
-                    # If regeneration fails, current_script_path is not updated, so the next attempt might try with the old faulty one or a missing one.
-            except Exception as e_regen_fallback:
-                logger.error(f"Exception during fallback script regeneration for scene '{scene_title}': {e_regen_fallback}.")
-        
-        # Loop continues to the next attempt with (potentially) updated current_script_path
 
-    # If loop finishes, all attempts failed for this scene
-    logger.error(
-        f"All {max_retries} attempts failed for scene '{scene_title}'. "
-        f"Final script tried: {current_script_path}"
-    )
+                if fixed_script_path and fixed_class_name:
+                    logger.info(f"Script for '{scene_title}' was fixed. New script: {fixed_script_path}")
+                    # Clean up the old faulty script if a new one was created
+                    if current_script_path != fixed_script_path and os.path.exists(current_script_path):
+                        os.remove(current_script_path)
+                    current_script_path = fixed_script_path
+                    current_manim_class_name = fixed_class_name
+                else:
+                    logger.error(f"Failed to fix script for '{scene_title}'. Will retry with the same script.")
+
+            except Exception as e:
+                logger.error(f"An exception occurred while trying to fix the script for '{scene_title}': {e}")
+
+    logger.error(f"All {max_retries} attempts failed for scene '{scene_title}'.")
     return None
 
 async def run_pipeline(topic: str, num_scenes_override: int | None = None):
@@ -250,51 +197,62 @@ async def run_pipeline(topic: str, num_scenes_override: int | None = None):
     if num_scenes_override is not None:
         didactic_script_args["num_scenes"] = num_scenes_override
     
-    # This is a synchronous call
-    structured_script = scripter.generate_script(**didactic_script_args)
-
-    if not structured_script or not structured_script.get("scenes"):
-        logger.error("Failed to generate didactic script or script has no scenes. Exiting pipeline.")
+    didactic_script = scripter.generate_script(**didactic_script_args)
+    if not didactic_script:
+        logger.error("Failed to generate the didactic script. Cannot proceed.")
         return
 
-    logger.info(f"Successfully generated didactic script with {len(structured_script['scenes'])} scenes.")
-    logger.debug(f"Didactic Script Content:\n{json.dumps(structured_script, indent=4)}")
+    logger.info(f"Successfully generated didactic script with {len(didactic_script['scenes'])} scenes.")
+    logger.debug(f"Didactic Script Content:\n{json.dumps(didactic_script, indent=4)}")
     # The script is also saved to a .md file by the scripter itself.
 
-    # --- Stage 2: Visual Architect (LLM Manim Code Generation — async/parallel) --- 
-    logger.info("--- Stage 2: Generating Manim Code via LLM for each scene (async parallel) ---")
+    # --- Stage 2 & 3: Visual Architect & Manim Renderer (in parallel) ---
+    logger.info("--- Stages 2 & 3: Generating Manim Scripts and Rendering Videos ---")
     architect = VisualArchitect()
-    scenes_to_process = structured_script.get("scenes", [])
-    
-    loop = asyncio.get_running_loop()
-    script_generation_tasks = []
-    for sd_item in scenes_to_process:
-        scene_num = sd_item.get("scene_number")
-        scene_title = sd_item.get("title")
+    renderer = ManimRenderer()
+    video_analyzer = VideoAnalyzer() # Instantiate the video analyzer
+    loop = asyncio.get_event_loop()
+    topic_title_str = topic.replace(" ", "_")
+
+    # Create a partial function for render_scene_with_retries to pass the analyzer
+    render_func = partial(
+        render_scene_with_retries,
+        architect_instance=architect,
+        renderer_instance=renderer,
+        video_analyzer_instance=video_analyzer,
+        loop=loop,
+        topic_title_str=topic_title_str
+    )
+
+    # First, generate all initial scripts sequentially to avoid race conditions on file creation
+    initial_generation_tasks = []
+    for scene_data in didactic_script.get("scenes", []):
+        scene_num = scene_data.get("scene_number")
+        scene_title = scene_data.get("title")
         logger.info(f"Scheduling Scene {scene_num}: '{scene_title}' for async generation")
-        script_generation_tasks.append(
+        initial_generation_tasks.append(
             loop.run_in_executor(
                 None,  # Default ThreadPoolExecutor
                 partial(
                     generate_manim_script_for_scene_wrapper, # Must be a 'def'
                     architect, 
-                    sd_item,
-                    structured_script.get("topic", "Unknown Topic")
+                    scene_data,
+                    topic_title_str
                 )
             )
         )
     
-    logger.info(f"About to await asyncio.gather for {len(script_generation_tasks)} script_generation_tasks.")
+    logger.info(f"About to await asyncio.gather for {len(initial_generation_tasks)} script_generation_tasks.")
     # Results from gather will be a list of (script_path, manim_class_name, original_scene_data)
-    generated_script_details = await asyncio.gather(*script_generation_tasks)
+    initial_scripts = await asyncio.gather(*initial_generation_tasks)
 
-    # --- Debugging logs for generated_script_details ---
+    # --- Debugging logs for initial_scripts ---
     logger.info("-----------------------------------------------------------------")
-    logger.info(f"DEBUG: Type of generated_script_details after gather: {type(generated_script_details)}")
-    if isinstance(generated_script_details, list):
-        logger.info(f"DEBUG: Length of generated_script_details list: {len(generated_script_details)}")
-        if generated_script_details:
-            for i, item in enumerate(generated_script_details):
+    logger.info(f"DEBUG: Type of initial_scripts after gather: {type(initial_scripts)}")
+    if isinstance(initial_scripts, list):
+        logger.info(f"DEBUG: Length of initial_scripts list: {len(initial_scripts)}")
+        if initial_scripts:
+            for i, item in enumerate(initial_scripts):
                 logger.info(f"DEBUG: Item {i} type: {type(item)}")
                 if isinstance(item, tuple):
                     logger.info(f"DEBUG: Item {i} (tuple) length: {len(item)}")
@@ -303,16 +261,16 @@ async def run_pipeline(topic: str, num_scenes_override: int | None = None):
                     logger.warning(f"DEBUG: Item {i} is NOT a tuple: {item}")
                     if hasattr(item, '__await__'):
                         logger.error(f"DEBUG: Item {i} is an awaitable (coroutine/Future)! This is the problem.")
-    elif hasattr(generated_script_details, '__await__'):
-        logger.error("DEBUG: generated_script_details ITSELF is an awaitable (e.g., coroutine or Future)! It was not fully resolved by await gather.")
+    elif hasattr(initial_scripts, '__await__'):
+        logger.error("DEBUG: initial_scripts ITSELF is an awaitable (e.g., coroutine or Future)! It was not fully resolved by await gather.")
     else:
-        logger.warning(f"DEBUG: generated_script_details is NEITHER a list NOR an awaitable. It is: {generated_script_details}")
+        logger.warning(f"DEBUG: initial_scripts is NEITHER a list NOR an awaitable. It is: {initial_scripts}")
     logger.info("-----------------------------------------------------------------")
     # --- End of debugging logs ---
 
     # Filter and log results
     successfully_generated_scripts_info = [] 
-    for script_path, manim_class_name, sd in generated_script_details:
+    for script_path, manim_class_name, sd in initial_scripts:
         scene_title = sd.get("title", "Unknown Scene") 
         if script_path and manim_class_name:
             logger.info(
@@ -328,28 +286,20 @@ async def run_pipeline(topic: str, num_scenes_override: int | None = None):
         logger.error("No Manim scripts were successfully generated. Exiting pipeline.")
         return
 
-    # --- Stage 3: Manim Renderer (async with retries) --- 
-    logger.info("--- Stage 3: Rendering Manim Scripts into Videos (async with retries) ---")
-    renderer = ManimRenderer() # architect is already instantiated
+    # Now, run the rendering (with retries and analysis) tasks in parallel
+    logger.info("--- Starting parallel rendering and analysis phase ---")
     
-    render_tasks = []
-    for script_path, manim_class_name, sd in successfully_generated_scripts_info:
-        render_tasks.append(
-            render_scene_with_retries( # This is async def
-                initial_script_path=script_path,
-                initial_manim_class_name=manim_class_name,
-                original_scene_data=sd,
-                architect_instance=architect,
-                renderer_instance=renderer,
-                loop=loop, # Pass the current loop
-                topic_title_str=structured_script.get("topic", "Unknown Topic"),
-                max_retries=MAX_RENDER_ATTEMPTS
-            )
+    rendering_tasks = [
+        render_func(
+            initial_script_path=script_path,
+            initial_manim_class_name=manim_class_name,
+            original_scene_data=scene_data
         )
-    
-    video_results = await asyncio.gather(*render_tasks) # results is a list of video_file_paths or Nones
-    rendered_video_paths = [path for path in video_results if path]
+        for script_path, manim_class_name, scene_data in successfully_generated_scripts_info
+    ]
 
+    final_video_paths = await asyncio.gather(*rendering_tasks)
+    rendered_video_paths = [path for path in final_video_paths if path]
 
     if not rendered_video_paths:
         logger.error("No videos were successfully rendered.")

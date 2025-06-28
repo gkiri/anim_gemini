@@ -4,6 +4,9 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
+# --- Gemini API Configuration ---
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+
 # --- Base Directory Configuration ---
 # APP_BASE_DIR will be the absolute path to the 'anim_gemini' directory
 # This assumes config.py is in anim_gemini/project_drishti/config.py
@@ -55,6 +58,11 @@ VISUAL_ARCHITECT_FIX_PROMPT_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path
 if not os.path.exists(VISUAL_ARCHITECT_FIX_PROMPT_TEMPLATE_PATH):
     print(f"CRITICAL ERROR: Visual Architect fix prompt template not found at expected path: {VISUAL_ARCHITECT_FIX_PROMPT_TEMPLATE_PATH}")
 
+# Path for Video Analyzer Prompt Template
+VIDEO_ANALYZER_PROMPT_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "prompts", "video_analyzer_prompt.txt")
+if not os.path.exists(VIDEO_ANALYZER_PROMPT_TEMPLATE_PATH):
+    print(f"WARNING: Video Analyzer prompt template not found at expected path: {VIDEO_ANALYZER_PROMPT_TEMPLATE_PATH}")
+
 # Path for Didactic Scripter Prompt Template
 DIDACTIC_SCRIPTER_PROMPT_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "prompts", "didactic_scripter_prompt_template.txt")
 
@@ -62,6 +70,11 @@ DIDACTIC_SCRIPTER_PROMPT_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.ab
 if not os.path.exists(DIDACTIC_SCRIPTER_PROMPT_TEMPLATE_PATH):
     print(f"CRITICAL ERROR: Didactic Scripter prompt template not found at expected path: {DIDACTIC_SCRIPTER_PROMPT_TEMPLATE_PATH}")
     print(f"Please ensure the file exists.")
+
+# Video processing settings
+COMPRESSED_VIDEO_DIR = os.path.join(GENERATED_CONTENT_DIR, "compressed_videos")
+os.makedirs(COMPRESSED_VIDEO_DIR, exist_ok=True)
+COMPRESSION_RESOLUTION = "256x144"
 
 # You can add more configurations here as needed
 # For example, default reasoning effort, temperature for LLM calls

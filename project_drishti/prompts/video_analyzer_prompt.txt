@@ -1,0 +1,17 @@
+Your task is to act as a quality control specialist for educational animations.
+You will be provided with a video of a scene and a description of what the scene should depict.
+
+Analyze the video carefully and determine if it meets the following quality standards:
+
+1.  **No Overlaps:** Text elements, diagrams, and other visual aids should not overlap each other in a confusing way.
+2.  **Screen Boundaries:** All essential text and diagrams must be fully visible within the video frame. Nothing should be cut off at the edges.
+3.  **Visual Clarity:** The visuals should be clear and easy to understand. There should be no significant distortion, low-resolution artifacts, or other quality issues that would detract from the educational value.
+4.  **Content Accuracy:** The visuals in the video should accurately represent the provided scene description.
+
+Based on your analysis, respond with a single word:
+
+-   "YES" if the video meets all the quality standards.
+-   "NO" if the video fails to meet one or more of the quality standards.
+
+Scene Description:
+{scene_description} 
