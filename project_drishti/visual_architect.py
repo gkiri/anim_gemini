@@ -457,11 +457,12 @@ class VisualArchitect:
                 temperature=config.LLM_DEFAULT_TEMPERATURE,
                 # As per user's reference, reasoning_effort might be specific to some models
                 # For general OpenAI API, it's not standard. OpenRouter might handle it.
-                # extra_body={
-                #     "reasoning": {
-                #         "max_tokens": 2000
-                #     }
-                # },
+                extra_body={
+                    "reasoning": {
+                        "effort": 'high',
+                        "exclude": False,  
+                    }
+                },
                 extra_headers={
                     "HTTP-Referer": config.OPENROUTER_SITE_URL,
                     "X-Title": config.OPENROUTER_APP_NAME,

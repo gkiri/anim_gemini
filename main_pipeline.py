@@ -61,17 +61,27 @@ async def render_scene_with_retries(
     video_analyzer_instance: VideoAnalyzer,
     loop: asyncio.AbstractEventLoop,
     topic_title_str: str,
+    metrics_tracker: dict,
     max_retries: int = MAX_RENDER_ATTEMPTS
 ) -> str | None:
     current_script_path = initial_script_path
     current_manim_class_name = initial_manim_class_name
     scene_title = original_scene_data.get("title", "Unknown Scene")
     scene_narration = original_scene_data.get("script_content", "") # Use script_content as narration
-
+    
+    # Initialize metrics for this scene if not already present
+    if scene_title not in metrics_tracker:
+        metrics_tracker[scene_title] = {
+            "script_generation_attempts": 0,
+            "video_analysis_attempts": 0,
+            "status": "Pending"
+        }
+    
     for attempt in range(max_retries):
         logger.info(
             f"Processing attempt {attempt + 1}/{max_retries} for scene '{scene_title}'."
         )
+        metrics_tracker[scene_title]["script_generation_attempts"] = attempt + 1
 
         # Ensure script exists, if not, generate it.
         if not current_script_path or not os.path.exists(current_script_path):
@@ -113,6 +123,7 @@ async def render_scene_with_retries(
         if render_success:
             logger.info(f"Successfully rendered '{scene_title}' to {video_path}.")
             logger.info(f"Analyzing video quality for '{scene_title}'...")
+            metrics_tracker[scene_title]["video_analysis_attempts"] += 1
 
             analysis_passed, analysis_reason = await loop.run_in_executor(
                 None,
@@ -123,6 +134,7 @@ async def render_scene_with_retries(
 
             if analysis_passed:
                 logger.info(f"SUCCESS: Video for '{scene_title}' passed quality analysis. Reason: {analysis_reason}")
+                metrics_tracker[scene_title]["status"] = "Success"
                 # Clean up intermediate script if a fix had created a new one
                 if initial_script_path and current_script_path != initial_script_path and os.path.exists(initial_script_path):
                     os.remove(initial_script_path)
@@ -172,7 +184,33 @@ async def render_scene_with_retries(
                 logger.error(f"An exception occurred while trying to fix the script for '{scene_title}': {e}")
 
     logger.error(f"All {max_retries} attempts failed for scene '{scene_title}'.")
+    metrics_tracker[scene_title]["status"] = "Failed"
     return None
+
+def print_metrics_table(metrics: dict):
+    """Prints a formatted table of the scene metrics."""
+    logger.info("--- Final Run Metrics ---")
+    # Headers
+    headers = ["Scene Title", "Script Gen Attempts", "Video Analysis Attempts", "Final Status"]
+    # Column widths - adjust as needed
+    col_widths = [max(len(k) for k in metrics.keys()) + 2, 21, 25, 15]
+
+    # Header row
+    header_row = " | ".join(h.ljust(w) for h, w in zip(headers, col_widths))
+    logger.info(header_row)
+    logger.info("-" * len(header_row))
+
+    # Data rows
+    for title, data in metrics.items():
+        row_data = [
+            title,
+            str(data.get("script_generation_attempts", 0)),
+            str(data.get("video_analysis_attempts", 0)),
+            data.get("status", "Unknown")
+        ]
+        data_row = " | ".join(d.ljust(w) for d, w in zip(row_data, col_widths))
+        logger.info(data_row)
+    logger.info("-" * len(header_row))
 
 async def run_pipeline(topic: str, num_scenes_override: int | None = None):
     """
@@ -184,6 +222,7 @@ async def run_pipeline(topic: str, num_scenes_override: int | None = None):
                                            If None, DidacticScripter's default is used.
     """
     logger.info(f"Starting Project Drishti pipeline for topic: '{topic}'")
+    scene_metrics = {}
 
     if not config.OPENROUTER_API_KEY:
         logger.error("CRITICAL: OPENROUTER_API_KEY is not set in .env file. LLM calls will fail.")
@@ -214,6 +253,15 @@ async def run_pipeline(topic: str, num_scenes_override: int | None = None):
     loop = asyncio.get_event_loop()
     topic_title_str = topic.replace(" ", "_")
 
+    # Initialize metrics for all scenes
+    for scene_data in didactic_script.get("scenes", []):
+        scene_title = scene_data.get("title", f"Scene_{scene_data.get('scene_number', 'Unknown')}")
+        scene_metrics[scene_title] = {
+            "script_generation_attempts": 0,
+            "video_analysis_attempts": 0,
+            "status": "Pending"
+        }
+
     # Create a partial function for render_scene_with_retries to pass the analyzer
     render_func = partial(
         render_scene_with_retries,
@@ -221,114 +269,81 @@ async def run_pipeline(topic: str, num_scenes_override: int | None = None):
         renderer_instance=renderer,
         video_analyzer_instance=video_analyzer,
         loop=loop,
-        topic_title_str=topic_title_str
+        topic_title_str=topic_title_str,
+        metrics_tracker=scene_metrics
     )
 
     # First, generate all initial scripts sequentially to avoid race conditions on file creation
     initial_generation_tasks = []
     for scene_data in didactic_script.get("scenes", []):
-        scene_num = scene_data.get("scene_number")
-        scene_title = scene_data.get("title")
-        logger.info(f"Scheduling Scene {scene_num}: '{scene_title}' for async generation")
-        initial_generation_tasks.append(
-            loop.run_in_executor(
-                None,  # Default ThreadPoolExecutor
-                partial(
-                    generate_manim_script_for_scene_wrapper, # Must be a 'def'
-                    architect, 
-                    scene_data,
-                    topic_title_str
-                )
+        scene_title = scene_data.get("title", f"Scene_{scene_data.get('scene_number', 'Unknown')}")
+        # Assuming generate_manim_script_for_scene is synchronous
+        # To make it async, it would need to be run in an executor
+        task = loop.run_in_executor(
+            None,
+            partial(
+                generate_manim_script_for_scene_wrapper,
+                architect,
+                scene_data,
+                topic_title_str
             )
         )
-    
-    logger.info(f"About to await asyncio.gather for {len(initial_generation_tasks)} script_generation_tasks.")
-    # Results from gather will be a list of (script_path, manim_class_name, original_scene_data)
-    initial_scripts = await asyncio.gather(*initial_generation_tasks)
+        initial_generation_tasks.append(task)
 
-    # --- Debugging logs for initial_scripts ---
-    logger.info("-----------------------------------------------------------------")
-    logger.info(f"DEBUG: Type of initial_scripts after gather: {type(initial_scripts)}")
-    if isinstance(initial_scripts, list):
-        logger.info(f"DEBUG: Length of initial_scripts list: {len(initial_scripts)}")
-        if initial_scripts:
-            for i, item in enumerate(initial_scripts):
-                logger.info(f"DEBUG: Item {i} type: {type(item)}")
-                if isinstance(item, tuple):
-                    logger.info(f"DEBUG: Item {i} (tuple) length: {len(item)}")
-                    logger.info(f"DEBUG: Item {i} content: {item}")
-                else:
-                    logger.warning(f"DEBUG: Item {i} is NOT a tuple: {item}")
-                    if hasattr(item, '__await__'):
-                        logger.error(f"DEBUG: Item {i} is an awaitable (coroutine/Future)! This is the problem.")
-    elif hasattr(initial_scripts, '__await__'):
-        logger.error("DEBUG: initial_scripts ITSELF is an awaitable (e.g., coroutine or Future)! It was not fully resolved by await gather.")
-    else:
-        logger.warning(f"DEBUG: initial_scripts is NEITHER a list NOR an awaitable. It is: {initial_scripts}")
-    logger.info("-----------------------------------------------------------------")
-    # --- End of debugging logs ---
+    initial_scripts_results = await asyncio.gather(*initial_generation_tasks)
 
-    # Filter and log results
-    successfully_generated_scripts_info = [] 
-    for script_path, manim_class_name, sd in initial_scripts:
-        scene_title = sd.get("title", "Unknown Scene") 
+    # Now, create rendering tasks with the generated scripts
+    render_tasks = []
+    for script_path, manim_class_name, scene_data in initial_scripts_results:
         if script_path and manim_class_name:
-            logger.info(
-                f"Successfully generated Manim script for Scene '{scene_title}': {script_path}, Class: {manim_class_name}"
+            task = render_func(
+                initial_script_path=script_path,
+                initial_manim_class_name=manim_class_name,
+                original_scene_data=scene_data
             )
-            successfully_generated_scripts_info.append((script_path, manim_class_name, sd))
+            render_tasks.append(task)
         else:
-            logger.error(
-                f"Failed to generate Manim script for Scene '{scene_title}'. Skipping this scene for rendering."
-            )
+            scene_title = scene_data.get("title", "Unknown Scene")
+            logger.error(f"Could not generate initial script for scene: {scene_title}. It will not be rendered.")
+            scene_metrics[scene_title]["status"] = "Script Gen Failed"
 
-    if not successfully_generated_scripts_info:
-        logger.error("No Manim scripts were successfully generated. Exiting pipeline.")
-        return
 
-    # Now, run the rendering (with retries and analysis) tasks in parallel
-    logger.info("--- Starting parallel rendering and analysis phase ---")
+    final_video_paths = []
+    logger.info(f"--- Starting parallel rendering of {len(render_tasks)} scenes ---")
+    # This loop is for the async processing of rendering tasks
+    for result in await asyncio.gather(*render_tasks):
+        if result:
+            final_video_paths.append(result)
+
+    # --- Final Summary ---
+    logger.info("--- Pipeline Execution Finished ---")
+    logger.info(f"Successfully generated {len(final_video_paths)} out of {len(didactic_script['scenes'])} scenes.")
+    if final_video_paths:
+        logger.info("Final video paths:")
+        for path in final_video_paths:
+            logger.info(f" - {path}")
     
-    rendering_tasks = [
-        render_func(
-            initial_script_path=script_path,
-            initial_manim_class_name=manim_class_name,
-            original_scene_data=scene_data
-        )
-        for script_path, manim_class_name, scene_data in successfully_generated_scripts_info
-    ]
+    print_metrics_table(scene_metrics)
 
-    final_video_paths = await asyncio.gather(*rendering_tasks)
-    rendered_video_paths = [path for path in final_video_paths if path]
+async def main():
+    """
+    Main function to parse arguments and run the pipeline.
+    """
+    # --- Configuration ---
+    topic_to_process = "The Non-Cooperation Movement in India"
+    # topic_to_process = "The story of the Elephant and the Rope"
+    # topic_to_process = "The Indian Removal Act and the Trail of Tears"
+    # topic_to_process = "The history of the Rosetta Stone"
+    # topic_to_process = "The process of photosynthesis"
+    # topic_to_process = "A brief history of the internet"
 
-    if not rendered_video_paths:
-        logger.error("No videos were successfully rendered.")
-    else:
-        logger.info(f"Pipeline complete! {len(rendered_video_paths)} videos rendered:")
-        for path in rendered_video_paths:
-            logger.info(f"- {path}")
-        logger.info(f"You can find the generated scripts in: {config.MANIM_SCRIPTS_DIR}")
-        logger.info(f"And the rendered videos in subdirectories of: {config.MANIM_VIDEO_DIR} (within {config.GENERATED_CONTENT_DIR})")
+    # Set to a number to override the scripter's default (e.g., 3 for a short test)
+    # Set to None to let the scripter decide.
+    num_scenes_for_topic = 5
 
-    logger.info("--- Project Drishti Pipeline Finished ---")
+    # --- Run Pipeline ---
+    await run_pipeline(topic_to_process, num_scenes_for_topic)
 
 if __name__ == "__main__":
-    # --- Configuration for the run ---
-    # UPSC_TOPIC = "The Quit India Movement"
-    UPSC_TOPIC = "Non-Cooperation Movement" # Using a slightly different topic for a fresh run
-    # NUM_SCENES = 3 # Override default number of scenes from DidacticScripter, None to use default
-    NUM_SCENES = 2 # For a quicker test run, generating only 2 scenes.
-
-    logger.info("=================================================================")
-    logger.info("                 STARTING PROJECT DRISHTI PIPELINE               ")
-    logger.info("=================================================================")
-    
-    # asyncio.run() to call the async run_pipeline
-    asyncio.run(run_pipeline(UPSC_TOPIC, num_scenes_override=NUM_SCENES))
-
-    logger.info("=================================================================")
-    logger.info("           PROJECT DRISHTI PIPELINE EXECUTION ATTEMPTED         ")
-    logger.info("=================================================================")
-    logger.info(f"Please check logs above and output files in the '{config.GENERATED_CONTENT_DIR}' directory.")
-    logger.info(f"Specifically, scripts in '{config.MANIM_SCRIPTS_DIR}' and videos in '{config.MANIM_VIDEO_DIR}'.")
-    logger.info("Debug .md files for script generation are in 'outputs/didactic_scripter' and 'outputs/visual_architect'.") 
+    # asyncio.run() to call the async main
+    asyncio.run(main())

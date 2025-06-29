@@ -25,6 +25,7 @@ MANIM_SCRIPTS_DIR = os.path.join(GENERATED_CONTENT_DIR, "manim_scripts")
 MANIM_VIDEO_DIR = os.path.join(GENERATED_CONTENT_DIR, "videos")
 MANIM_LOG_DIR = os.path.join(GENERATED_CONTENT_DIR, "logs")
 MANIM_IMAGE_DIR = os.path.join(GENERATED_CONTENT_DIR, "images")
+FINAL_VIDEOS_DIR = os.path.join(APP_BASE_DIR, GENERATED_CONTENT_BASE, "final_videos")
 
 MANIM_QUALITY_FLAG = os.getenv("MANIM_QUALITY_FLAG", "-pql")
 
@@ -33,6 +34,7 @@ os.makedirs(MANIM_SCRIPTS_DIR, exist_ok=True)
 os.makedirs(MANIM_VIDEO_DIR, exist_ok=True)
 os.makedirs(MANIM_LOG_DIR, exist_ok=True)
 os.makedirs(MANIM_IMAGE_DIR, exist_ok=True)
+os.makedirs(FINAL_VIDEOS_DIR, exist_ok=True)
 
 # Validate essential configurations
 if not OPENROUTER_API_KEY:

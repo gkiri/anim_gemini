@@ -4,6 +4,7 @@ import logging
 import time
 import google.generativeai as genai
 from . import config
+import shutil
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -116,6 +117,25 @@ class VideoAnalyzer:
                 except OSError as e:
                     logger.error(f"Error removing compressed file {compressed_path}: {e}")
 
+    def move_to_final_videos(self, video_path: str) -> str | None:
+        """
+        Moves the video to the final videos directory.
+        """
+        if not os.path.exists(video_path):
+            logger.error(f"Video file not found at: {video_path}")
+            return None
+
+        filename = os.path.basename(video_path)
+        destination_path = os.path.join(config.FINAL_VIDEOS_DIR, filename)
+
+        try:
+            shutil.move(video_path, destination_path)
+            logger.info(f"Successfully moved video to: {destination_path}")
+            return destination_path
+        except Exception as e:
+            logger.error(f"Failed to move video: {e}")
+            return None
+
     def analyze_and_report(self, video_path, scene_narration):
         """
         Analyzes a video and returns a tuple of (bool, str) indicating success and a message.
@@ -123,7 +143,12 @@ class VideoAnalyzer:
         """
         is_good = self.analyze_video(video_path, scene_narration)
         
-        report_message = "Video analysis passed." if is_good else "Video analysis failed and will be retried."
+        if is_good:
+            self.move_to_final_videos(video_path)
+            report_message = "Video analysis passed."
+        else:
+            report_message = "Video analysis failed and will be retried."
+        
         logger.info(report_message) # Also log it here for clarity
         
         return is_good, report_message
