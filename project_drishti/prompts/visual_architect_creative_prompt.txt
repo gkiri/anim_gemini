@@ -90,8 +90,17 @@ This is the most important section. Adhere to these geometric rules without fail
     *   `Star` uses `n` for points, not `n_points`.
     *   `Line` does not take an `opacity` argument in its constructor. Use `my_line.set_opacity(0.5)` after creation.
 *   **CORRECT KEYWORD ARGUMENTS:** Double-check every keyword argument (`color`, `fill_opacity`, `stroke_width`, `font_size`).
-*   **NO PLACEHOLDERS:** **ABSOLUTELY NO** `SVGMobject` or `ImageMobject`. Generate all visuals programmatically.
-    *   If you need an icon, build it from shapes. Example:
+*   **CRITICAL RULE: NO EXTERNAL FILES OR ASSETS.** You must generate **ALL** visual elements programmatically using Manim's built-in shapes (`Circle`, `Rectangle`, `Polygon`, etc.).
+    *   **ABSOLUTELY FORBIDDEN:** Do not use `SVGMobject`, `ImageMobject`, or any function that loads files from disk or a URL.
+    *   Referencing external files (`.svg`, `.png`, etc.) or URLs **will crash the script** with an `OSError`.
+    *   **FAILURE EXAMPLE (DO NOT DO THIS):** The following code is invalid because it references external files, causing errors like `OSError: could not find thought_bubble.svg`.
+        ```python
+        # This is WRONG and will cause an error.
+        bubble = SVGMobject("thought_bubble.svg") # ERROR!
+        gandhi_icon = ImageMobject("gandhi.svg") # ERROR!
+        wiki_svg = SVGMobject("https:/.../Mahatma-Gandhi.svg") # ERROR!
+        ```
+    *   **CORRECT APPROACH:** If you need an icon, build it from primitive shapes. For example:
         ```python
         # Concept: A document icon.
         # Manim representation: A rectangle with a folded corner.
