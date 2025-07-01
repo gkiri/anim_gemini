@@ -209,6 +209,53 @@ def print_metrics_table(metrics: dict):
         logger.info(data_row)
     logger.info("-" * len(header_row))
 
+async def process_scene(
+    scene_data: dict,
+    architect: VisualArchitect,
+    renderer: ManimRenderer,
+    video_analyzer: VideoAnalyzer,
+    loop: asyncio.AbstractEventLoop,
+    topic_title_str: str,
+    metrics_tracker: dict,
+    semaphore: asyncio.Semaphore
+):
+    """
+    Complete processing for a single scene, from script generation to final video.
+    """
+    async with semaphore:
+        scene_title = scene_data.get("title", f"Scene_{scene_data.get('scene_number', 'Unknown')}")
+        logger.info(f"Starting processing for scene: {scene_title}")
+
+        # Initial script generation
+        script_path, manim_class_name, _ = await loop.run_in_executor(
+            None,
+            partial(
+                generate_manim_script_for_scene_wrapper,
+                architect,
+                scene_data,
+                topic_title_str
+            )
+        )
+
+        if not (script_path and manim_class_name):
+            logger.error(f"Could not generate initial script for scene: {scene_title}. It will not be rendered.")
+            metrics_tracker[scene_title]["status"] = "Script Gen Failed"
+            return None
+
+        # Render with retries
+        video_path = await render_scene_with_retries(
+            initial_script_path=script_path,
+            initial_manim_class_name=manim_class_name,
+            original_scene_data=scene_data,
+            architect_instance=architect,
+            renderer_instance=renderer,
+            video_analyzer_instance=video_analyzer,
+            loop=loop,
+            topic_title_str=topic_title_str,
+            metrics_tracker=metrics_tracker
+        )
+        return video_path
+
 async def run_pipeline(topic: str, num_scenes_override: int | None = None):
     """
     Runs the full pipeline from topic to individual scene videos.
@@ -249,6 +296,10 @@ async def run_pipeline(topic: str, num_scenes_override: int | None = None):
     video_analyzer = VideoAnalyzer() # Instantiate the video analyzer
     loop = asyncio.get_event_loop()
     topic_title_str = topic.replace(" ", "_")
+    # Introduce a semaphore to limit concurrent rendering/analysis tasks
+    # to avoid overwhelming the system. Adjust the number based on system capacity.
+    concurrency_limit = 10  #change based on number of scenes
+    semaphore = asyncio.Semaphore(concurrency_limit)
 
     # Initialize metrics for all scenes
     for scene_data in didactic_script.get("scenes", []):
@@ -259,56 +310,26 @@ async def run_pipeline(topic: str, num_scenes_override: int | None = None):
             "status": "Pending"
         }
 
-    # Create a partial function for render_scene_with_retries to pass the analyzer
-    render_func = partial(
-        render_scene_with_retries,
-        architect_instance=architect,
-        renderer_instance=renderer,
-        video_analyzer_instance=video_analyzer,
-        loop=loop,
-        topic_title_str=topic_title_str,
-        metrics_tracker=scene_metrics
-    )
-
-    # First, generate all initial scripts sequentially to avoid race conditions on file creation
-    initial_generation_tasks = []
+    # Create tasks for each scene to be processed concurrently
+    processing_tasks = []
     for scene_data in didactic_script.get("scenes", []):
-        scene_title = scene_data.get("title", f"Scene_{scene_data.get('scene_number', 'Unknown')}")
-        # Assuming generate_manim_script_for_scene is synchronous
-        # To make it async, it would need to be run in an executor
-        task = loop.run_in_executor(
-            None,
-            partial(
-                generate_manim_script_for_scene_wrapper,
-                architect,
-                scene_data,
-                topic_title_str
-            )
+        task = process_scene(
+            scene_data=scene_data,
+            architect=architect,
+            renderer=renderer,
+            video_analyzer=video_analyzer,
+            loop=loop,
+            topic_title_str=topic_title_str,
+            metrics_tracker=scene_metrics,
+            semaphore=semaphore
         )
-        initial_generation_tasks.append(task)
-
-    initial_scripts_results = await asyncio.gather(*initial_generation_tasks)
-
-    # Now, create rendering tasks with the generated scripts
-    render_tasks = []
-    for script_path, manim_class_name, scene_data in initial_scripts_results:
-        if script_path and manim_class_name:
-            task = render_func(
-                initial_script_path=script_path,
-                initial_manim_class_name=manim_class_name,
-                original_scene_data=scene_data
-            )
-            render_tasks.append(task)
-        else:
-            scene_title = scene_data.get("title", "Unknown Scene")
-            logger.error(f"Could not generate initial script for scene: {scene_title}. It will not be rendered.")
-            scene_metrics[scene_title]["status"] = "Script Gen Failed"
-
-
+        processing_tasks.append(task)
+    
     final_video_paths = []
-    logger.info(f"--- Starting parallel rendering of {len(render_tasks)} scenes ---")
-    # This loop is for the async processing of rendering tasks
-    for result in await asyncio.gather(*render_tasks):
+    logger.info(f"--- Starting parallel processing of {len(processing_tasks)} scenes (max concurrency: {concurrency_limit}) ---")
+    
+    # This loop is for the async processing of all scene tasks
+    for result in await asyncio.gather(*processing_tasks):
         if result:
             final_video_paths.append(result)
 
