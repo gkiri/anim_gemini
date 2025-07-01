@@ -152,36 +152,33 @@ async def render_scene_with_retries(
                 logger.critical(f"Max retries reached for '{scene_title}'. Moving on.")
                 break # Exit loop
 
-            # Attempt to fix the script for the next iteration
-            logger.info(f"Attempting to fix script for '{scene_title}'...")
+            # Attempt to regenerate the script for the next iteration
+            logger.info(f"Attempting to regenerate script for '{scene_title}'...")
             try:
-                with open(current_script_path, 'r') as f:
-                    faulty_code = f.read()
-
-                fixed_script_path, fixed_class_name, _ = await loop.run_in_executor(
+                # We are choosing to regenerate from scratch instead of fixing
+                # This is a blocking call, run in executor
+                gen_script_path, gen_manim_class_name, _ = await loop.run_in_executor(
                     None,
                     partial(
-                        fix_manim_script_for_scene_wrapper,
+                        generate_manim_script_for_scene_wrapper,
                         architect_instance,
                         original_scene_data,
-                        topic_title_str,
-                        faulty_code,
-                        render_error
+                        topic_title_str
                     )
                 )
 
-                if fixed_script_path and fixed_class_name:
-                    logger.info(f"Script for '{scene_title}' was fixed. New script: {fixed_script_path}")
+                if gen_script_path and gen_manim_class_name:
+                    logger.info(f"Script for '{scene_title}' was regenerated. New script: {gen_script_path}")
                     # Clean up the old faulty script if a new one was created
-                    if current_script_path != fixed_script_path and os.path.exists(current_script_path):
+                    if current_script_path != gen_script_path and os.path.exists(current_script_path):
                         os.remove(current_script_path)
-                    current_script_path = fixed_script_path
-                    current_manim_class_name = fixed_class_name
+                    current_script_path = gen_script_path
+                    current_manim_class_name = gen_manim_class_name
                 else:
-                    logger.error(f"Failed to fix script for '{scene_title}'. Will retry with the same script.")
+                    logger.error(f"Failed to regenerate script for '{scene_title}'. Will retry with the same script if it exists.")
 
             except Exception as e:
-                logger.error(f"An exception occurred while trying to fix the script for '{scene_title}': {e}")
+                logger.error(f"An exception occurred while trying to regenerate the script for '{scene_title}': {e}")
 
     logger.error(f"All {max_retries} attempts failed for scene '{scene_title}'.")
     metrics_tracker[scene_title]["status"] = "Failed"
