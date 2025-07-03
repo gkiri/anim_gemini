@@ -19,7 +19,8 @@ class VideoAnalyzer:
         if not config.GEMINI_API_KEY:
             raise ValueError("GEMINI_API_KEY not found in environment variables.")
         genai.configure(api_key=config.GEMINI_API_KEY)
-        self.model = genai.GenerativeModel('gemini-2.5-flash-lite-preview-06-17')
+        #self.model = genai.GenerativeModel('gemini-2.5-flash-lite-preview-06-17')
+        self.model = genai.GenerativeModel('gemini-2.5-flash')
         self.prompt_template = self._load_prompt_template()
 
     def _load_prompt_template(self) -> str:
@@ -89,13 +90,60 @@ class VideoAnalyzer:
                 return False
 
             logger.info("Video uploaded. Generating content with Gemini.")
-            prompt = self.prompt_template.format(scene_description=scene_description)
+            # The new prompt is a pure visual check and doesn't require scene description.
+            prompt = self.prompt_template
+            #prompt = self.prompt_template.format(director_script=scene_description)
+
+            # 1. Define the generation configuration to enable thinking mode.
+            #    Set a specific token budget (e.g., 2048) for reasoning.
+            #    For dynamic thinking, you could use `thinking_budget=-1`.
+            generation_config = {"thinking_budget": 2048}
+            #response = self.model.generate_content([prompt, video_file],generation_config=generation_config)
             response = self.model.generate_content([prompt, video_file])
-            
             # Extract and interpret the response
-            result_text = response.text.strip().upper()
+            result_text = response.text.strip()
+            print("=========================================")
+            print("START: Gemini analysis result")
+            print(result_text)
+            print("END: Gemini analysis result")
+            print("=========================================")
             logger.info(f"Gemini analysis result: {result_text}")
-            return "YES" in result_text
+
+            try:
+                lines = result_text.strip().split('\n')
+                if len(lines) < 2:
+                    logger.error(f"Unexpected response format - expecting 2 lines but got {len(lines)}: '{result_text}'")
+                    return False
+
+                # Take the last two lines to be robust against prepended text
+                overlap_line = lines[-2]
+                boundary_line = lines[-1]
+
+                overlap_prefix = "####OVERLAP####"
+                boundary_prefix = "####BOUNDARY####"
+
+                if not overlap_line.startswith(overlap_prefix) or not boundary_line.startswith(boundary_prefix):
+                    logger.error(f"Unexpected response format - missing prefixes: '{result_text}'")
+                    return False
+
+                overlap_severity = overlap_line.replace(overlap_prefix, "").strip()
+                boundary_severity = boundary_line.replace(boundary_prefix, "").strip()
+
+                logger.info(f"Parsed Overlap severity: {overlap_severity}, Boundary severity: {boundary_severity}")
+
+                good_severities = ["NONE", "LOW", "HIGH"]
+                is_overlap_ok = overlap_severity in good_severities
+                is_boundary_ok = boundary_severity in good_severities
+                is_boundary_ok=1 #remove later ,keeping for some experiemnt
+                if not is_overlap_ok:
+                    logger.warning(f"Video failed due to OVERLAP severity: {overlap_severity}")
+                if not is_boundary_ok:
+                    logger.warning(f"Video failed due to BOUNDARY severity: {boundary_severity}")
+
+                return is_overlap_ok and is_boundary_ok
+            except Exception as e:
+                logger.error(f"Error parsing Gemini response: '{result_text}'. Error: {e}")
+                return False
 
         except Exception as e:
             logger.error(f"An error occurred during Gemini video analysis: {e}")
