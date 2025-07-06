@@ -174,6 +174,8 @@ class VisualArchitect:
         
         # Add non-negotiable imports. These will be the definitive imports for the script.
         final_script_lines.append("from manim import *")
+        final_script_lines.append("from manim_voiceover import VoiceoverScene")
+        final_script_lines.append("from manim_voiceover.services.openai import OpenAIService")
         final_script_lines.append("from anim_gemini.layout_utils import *  # Ensured by VisualArchitect validator")
         final_script_lines.append("import anim_gemini.colors as mcolors # Ensured by VisualArchitect validator")
         final_script_lines.append("import logging")
@@ -196,6 +198,8 @@ class VisualArchitect:
         known_bad_layout_import_signature = "anim_gemini.project_drishti.layout_utils"
         # These are the exact strings of imports we already added, to avoid duplication.
         exact_manim_import_str = "from manim import *"
+        exact_voiceover_scene_import_str = "from manim_voiceover import VoiceoverScene"
+        exact_openai_service_import_str = "from manim_voiceover.services.openai import OpenAIService"
         exact_correct_layout_import_str = "from anim_gemini.layout_utils import *"
         exact_numpy_import_str = "import numpy as np"
         exact_mcolors_import_str = "import anim_gemini.colors as mcolors"
@@ -213,6 +217,14 @@ class VisualArchitect:
             # Skip lines that are exact matches of imports we already added
             if stripped_line == exact_manim_import_str:
                 logger.debug(f"Validator skipping redundant exact Manim import line: '{line_content}'")
+                continue
+            
+            if stripped_line == exact_voiceover_scene_import_str:
+                logger.debug(f"Validator skipping redundant VoiceoverScene import line: '{line_content}'")
+                continue
+
+            if stripped_line == exact_openai_service_import_str:
+                logger.debug(f"Validator skipping redundant OpenAIService import line: '{line_content}'")
                 continue
             
             # Check for redundant correct layout import (potentially with varied comments)
@@ -241,7 +253,7 @@ class VisualArchitect:
         code = '\n'.join(final_script_lines)
 
         # --- Stage 3: Class definition check (remains largely the same) ---
-        class_def_str = f"class {scene_class_name}(Scene):"
+        class_def_str = f"class {scene_class_name}(VoiceoverScene):"
         construct_def_regex = r"def\s+construct\s*\(\s*self\s*\):"
 
         if class_def_str not in code:
@@ -419,7 +431,7 @@ class VisualArchitect:
             """       return ORIGIN # Default to screen center (0,0,0)\n\n""",
 
             """**Your generated code (after the helper definitions above) MUST:**\n""",
-            f"""1.  Follow with the Manim scene class definition: `class {manim_class_name}(Scene):`\n""",
+            f"""1.  Follow with the Manim scene class definition: `class {manim_class_name}(VoiceoverScene):`\n""",
             """2.  Implement the `construct(self):` method for that class, using Manim v0.19.0 syntax based on the API guide and scene request below.\n""",
             """3.  Use colors ONLY from the `mcolors` module as specified (e.g., `mcolors.RED`).\n\n""",
 
@@ -441,7 +453,7 @@ class VisualArchitect:
             f"""{self.manim_api_guide_content}\n""",
             """---END MANIM V0.19.0 API GUIDE---\n\n""",
 
-            f"""Now, using the above guide and API reference, generate the Manim Python code (starting with `from manim import *`, then the helper functions as defined above, then your class {manim_class_name}(Scene):, etc.) for the following request:\n""",
+            f"""Now, using the above guide and API reference, generate the Manim Python code (starting with `from manim import *`, then the helper functions as defined above, then your class {manim_class_name}(VoiceoverScene):, etc.) for the following request:\n""",
             f"""{prompt}"""
         ]
         full_prompt = "".join(prompt_parts)
