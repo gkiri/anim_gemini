@@ -1,0 +1,26 @@
+{"levelname": "INFO", "module": "logger_utils", "message": "Log file will be saved in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 0 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 1 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Automatically converted /root/manim_gemini/anim_gemini/outputs/generated_content/voiceovers/mahatma-gandhi-emerged-as-the-leader-who-could-7f3af565.mp3 to .wav"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 2 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 3 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Automatically converted /root/manim_gemini/anim_gemini/outputs/generated_content/voiceovers/in-1920-he-launched-the-non-cooperation-movement-42af34a0.mp3 to .wav"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 4 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 5 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Automatically converted /root/manim_gemini/anim_gemini/outputs/generated_content/voiceovers/gandhi-s-strategy-was-revolutionary-yet-simple-if-5bfe6185.mp3 to .wav"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 6 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 7 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Automatically converted /root/manim_gemini/anim_gemini/outputs/generated_content/voiceovers/he-believed-that-british-rule-in-india-survived-92e194bf.mp3 to .wav"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 8 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 9 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Automatically converted /root/manim_gemini/anim_gemini/outputs/generated_content/voiceovers/gandhi-called-upon-indians-to-boycott-british-9eb1d7af.mp3 to .wav"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 10 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 11 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 12 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 13 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 14 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Combining to Movie file."}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "\nFile ready at <>\n"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Subcaption file has been written as /root/manim_gemini/anim_gemini/outputs/generated_content/videos/scene_02_Gandhis_Vision_The_Birth_of_NonCooperation/480p15/Scene2Gandhis_Vision_The_Birth_of_NonCooperation.srt"}
+{"levelname": "INFO", "module": "scene", "message": "Rendered Scene2Gandhis_Vision_The_Birth_of_NonCooperation\nPlayed 15 animations"}
+{"levelname": "INFO", "module": "file_ops", "message": "Previewed File at: '/root/manim_gemini/anim_gemini/outputs/generated_content/videos/scene_02_Gandhis_Vision_The_Birth_of_NonCooperation/480p15/Scene2Gandhis_Vision_The_Birth_of_NonCooperation.mp4'"}

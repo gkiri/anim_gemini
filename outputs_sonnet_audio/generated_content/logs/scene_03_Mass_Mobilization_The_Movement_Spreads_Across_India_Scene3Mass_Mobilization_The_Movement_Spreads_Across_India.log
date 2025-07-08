@@ -1,0 +1,50 @@
+{"levelname": "INFO", "module": "logger_utils", "message": "Log file will be saved in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 0 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 1 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 2 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Automatically converted /root/manim_gemini/anim_gemini/outputs/generated_content/voiceovers/the-non-cooperation-movement-witnessed-7c629ae0.mp3 to .wav"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 3 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 4 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 5 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Automatically converted /root/manim_gemini/anim_gemini/outputs/generated_content/voiceovers/students-left-government-schools-and-colleges-in-0944b313.mp3 to .wav"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 6 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 7 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 8 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 9 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 10 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Automatically converted /root/manim_gemini/anim_gemini/outputs/generated_content/voiceovers/lawyers-like-motilal-nehru-c-r-das-and-others-gave-b2c2b5e7.mp3 to .wav"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 11 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 12 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 13 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 14 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 15 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Automatically converted /root/manim_gemini/anim_gemini/outputs/generated_content/voiceovers/government-employees-resigned-from-their-posts-and-afe2542c.mp3 to .wav"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 16 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 17 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 18 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 19 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 20 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Automatically converted /root/manim_gemini/anim_gemini/outputs/generated_content/voiceovers/the-movement-saw-massive-bonfires-of-foreign-cloth-f794364b.mp3 to .wav"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 21 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 22 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 23 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 24 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 25 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 26 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Automatically converted /root/manim_gemini/anim_gemini/outputs/generated_content/voiceovers/the-movement-also-gained-support-from-various-b7b40901.mp3 to .wav"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 27 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 28 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 29 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 30 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Automatically converted /root/manim_gemini/anim_gemini/outputs/generated_content/voiceovers/the-indian-national-congress-under-gandhi-s-87da1e41.mp3 to .wav"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 31 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 32 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 33 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 34 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 35 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 36 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Combining to Movie file."}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "\nFile ready at <>\n"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Subcaption file has been written as /root/manim_gemini/anim_gemini/outputs/generated_content/videos/scene_03_Mass_Mobilization_The_Movement_Spreads_Across_India/480p15/Scene3Mass_Mobilization_The_Movement_Spreads_Across_India.srt"}
+{"levelname": "INFO", "module": "scene", "message": "Rendered Scene3Mass_Mobilization_The_Movement_Spreads_Across_India\nPlayed 37 animations"}
+{"levelname": "INFO", "module": "file_ops", "message": "Previewed File at: '/root/manim_gemini/anim_gemini/outputs/generated_content/videos/scene_03_Mass_Mobilization_The_Movement_Spreads_Across_India/480p15/Scene3Mass_Mobilization_The_Movement_Spreads_Across_India.mp4'"}

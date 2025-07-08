@@ -36,8 +36,8 @@ Your generation process must follow a zero-error policy regarding visual composi
         ```python
         self.set_speech_service(
             OpenAIService(
-                voice="alloy", # e.g., alloy, echo, fable, onyx, nova, shimmer
-                model="tts-1",  # or "tts-1-hd"
+                voice="hf_alpha", # e.g., af_bella, hf_alpha
+                model="hexgrad/Kokoro-82M",
                 transcription_model=None
             )
         )
@@ -105,8 +105,10 @@ This is the core of creating a narrated video. Follow these steps precisely.
 **5.2. The `voiceover` Block**
 *   For each narration chunk, you **MUST** use a `with self.voiceover(...) as tracker:` block.
 *   The `text` parameter of `self.voiceover` will be the narration chunk.
+*   **HINDI VOICEOVER (CRITICAL):** The `{narration}` is in Hindi. You **MUST** pass the Hindi text directly to `self.voiceover`. Do not translate it. The audio service is configured for Hindi.
     ```python
-    narration_chunk_1 = "This circle represents our initial concept."
+    # Example with Hindi text
+    narration_chunk_1 = "यह चक्र हमारी प्रारंभिक अवधारणा का प्रतिनिधित्व करता है।"
     with self.voiceover(text=narration_chunk_1) as tracker:
         # Animation code goes here
     ```
@@ -128,22 +130,22 @@ This is the core of creating a narrated video. Follow these steps precisely.
 *   **Exception for static moments:** If a voiceover chunk is meant to play over a static scene (no animation), simply put `self.wait(tracker.duration)` inside the `with` block.
 
 **5.4. Example Walkthrough**
-*   Here is how to structure a sequence of animations and voiceovers.
+*   Here is how to structure a sequence of animations and voiceovers with Hindi narration.
     ```python
-    # Narration: "First, we introduce a square. Then, we transform it into a circle."
+    # Narration: "सबसे पहले, हम एक वर्ग का परिचय देते हैं। फिर, हम इसे एक वृत्त में बदलते हैं।"
 
     # In construct method:
     square = Square()
 
     # First part of animation and narration
-    with self.voiceover(text="First, we introduce a square.") as tracker:
+    with self.voiceover(text="सबसे पहले, हम एक वर्ग का परिचय देते हैं।") as tracker:
         self.play(Create(square), run_time=tracker.duration)
 
     self.wait(0.5) # A short pause between animations is good practice.
 
     # Second part
     circle = Circle().move_to(square)
-    with self.voiceover(text="Then, we transform it into a circle.") as tracker:
+    with self.voiceover(text="फिर, हम इसे एक वृत्त में बदलते हैं।") as tracker:
         self.play(ReplacementTransform(square, circle), run_time=tracker.duration)
     ```
 

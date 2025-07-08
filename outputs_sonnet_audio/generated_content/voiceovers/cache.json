@@ -1,0 +1,436 @@
+[
+  {
+    "input_text": "Mahatma Gandhi emerged as the leader who could channel this widespread anger into organized resistance.",
+    "input_data": {
+      "input_text": "Mahatma Gandhi emerged as the leader who could channel this widespread anger into organized resistance.",
+      "service": "deepinfra",
+      "config": {
+        "voice": "hf_alpha",
+        "model": "hexgrad/Kokoro-82M",
+        "speed": 1.0
+      }
+    },
+    "original_audio": "mahatma-gandhi-emerged-as-the-leader-who-could-7f3af565.mp3",
+    "final_audio": "mahatma-gandhi-emerged-as-the-leader-who-could-7f3af565.mp3"
+  },
+  {
+    "input_text": "In 1920, he launched the Non-Cooperation Movement, based on his philosophy of Satyagraha or non-violent resistance.",
+    "input_data": {
+      "input_text": "In 1920, he launched the Non-Cooperation Movement, based on his philosophy of Satyagraha or non-violent resistance.",
+      "service": "deepinfra",
+      "config": {
+        "voice": "hf_alpha",
+        "model": "hexgrad/Kokoro-82M",
+        "speed": 1.0
+      }
+    },
+    "original_audio": "in-1920-he-launched-the-non-cooperation-movement-42af34a0.mp3",
+    "final_audio": "in-1920-he-launched-the-non-cooperation-movement-42af34a0.mp3"
+  },
+  {
+    "input_text": "Gandhi's strategy was revolutionary yet simple: if Indians stopped cooperating with British institutions and withdrew their support, the colonial system would collapse from within.",
+    "input_data": {
+      "input_text": "Gandhi's strategy was revolutionary yet simple: if Indians stopped cooperating with British institutions and withdrew their support, the colonial system would collapse from within.",
+      "service": "deepinfra",
+      "config": {
+        "voice": "hf_alpha",
+        "model": "hexgrad/Kokoro-82M",
+        "speed": 1.0
+      }
+    },
+    "original_audio": "gandhi-s-strategy-was-revolutionary-yet-simple-if-5bfe6185.mp3",
+    "final_audio": "gandhi-s-strategy-was-revolutionary-yet-simple-if-5bfe6185.mp3"
+  },
+  {
+    "input_text": "He believed that British rule in India survived only because Indians participated in it - as government employees, students in British schools, buyers of British goods, and participants in British legal systems.",
+    "input_data": {
+      "input_text": "He believed that British rule in India survived only because Indians participated in it - as government employees, students in British schools, buyers of British goods, and participants in British legal systems.",
+      "service": "deepinfra",
+      "config": {
+        "voice": "hf_alpha",
+        "model": "hexgrad/Kokoro-82M",
+        "speed": 1.0
+      }
+    },
+    "original_audio": "he-believed-that-british-rule-in-india-survived-92e194bf.mp3",
+    "final_audio": "he-believed-that-british-rule-in-india-survived-92e194bf.mp3"
+  },
+  {
+    "input_text": "Gandhi called upon Indians to boycott British goods, resign from government jobs, withdraw children from government schools, and refuse to participate in British courts.",
+    "input_data": {
+      "input_text": "Gandhi called upon Indians to boycott British goods, resign from government jobs, withdraw children from government schools, and refuse to participate in British courts.",
+      "service": "deepinfra",
+      "config": {
+        "voice": "hf_alpha",
+        "model": "hexgrad/Kokoro-82M",
+        "speed": 1.0
+      }
+    },
+    "original_audio": "gandhi-called-upon-indians-to-boycott-british-9eb1d7af.mp3",
+    "final_audio": "gandhi-called-upon-indians-to-boycott-british-9eb1d7af.mp3"
+  },
+  {
+    "input_text": "The Non-Cooperation Movement witnessed unprecedented participation from all sections of Indian society.",
+    "input_data": {
+      "input_text": "The Non-Cooperation Movement witnessed unprecedented participation from all sections of Indian society.",
+      "service": "deepinfra",
+      "config": {
+        "voice": "hf_alpha",
+        "model": "hexgrad/Kokoro-82M",
+        "speed": 1.0
+      }
+    },
+    "original_audio": "the-non-cooperation-movement-witnessed-7c629ae0.mp3",
+    "final_audio": "the-non-cooperation-movement-witnessed-7c629ae0.mp3"
+  },
+  {
+    "input_text": "Although the Non-Cooperation Movement was called off, its impact on Indian politics and society was profound and lasting.",
+    "input_data": {
+      "input_text": "Although the Non-Cooperation Movement was called off, its impact on Indian politics and society was profound and lasting.",
+      "service": "deepinfra",
+      "config": {
+        "voice": "hf_alpha",
+        "model": "hexgrad/Kokoro-82M",
+        "speed": 1.0
+      }
+    },
+    "original_audio": "although-the-non-cooperation-movement-was-called-d009adf7.mp3",
+    "final_audio": "although-the-non-cooperation-movement-was-called-d009adf7.mp3"
+  },
+  {
+    "input_text": "Students left government schools and colleges in large numbers, leading to the establishment of national schools and colleges.",
+    "input_data": {
+      "input_text": "Students left government schools and colleges in large numbers, leading to the establishment of national schools and colleges.",
+      "service": "deepinfra",
+      "config": {
+        "voice": "hf_alpha",
+        "model": "hexgrad/Kokoro-82M",
+        "speed": 1.0
+      }
+    },
+    "original_audio": "students-left-government-schools-and-colleges-in-0944b313.mp3",
+    "final_audio": "students-left-government-schools-and-colleges-in-0944b313.mp3"
+  },
+  {
+    "input_text": "Lawyers like Motilal Nehru, C.R. Das, and others gave up their lucrative practices and refused to appear in British courts.",
+    "input_data": {
+      "input_text": "Lawyers like Motilal Nehru, C.R. Das, and others gave up their lucrative practices and refused to appear in British courts.",
+      "service": "deepinfra",
+      "config": {
+        "voice": "hf_alpha",
+        "model": "hexgrad/Kokoro-82M",
+        "speed": 1.0
+      }
+    },
+    "original_audio": "lawyers-like-motilal-nehru-c-r-das-and-others-gave-b2c2b5e7.mp3",
+    "final_audio": "lawyers-like-motilal-nehru-c-r-das-and-others-gave-b2c2b5e7.mp3"
+  },
+  {
+    "input_text": "For the first time, millions of ordinary Indians had participated in a coordinated struggle against British rule, transforming the freedom movement from an elite affair into a mass movement.",
+    "input_data": {
+      "input_text": "For the first time, millions of ordinary Indians had participated in a coordinated struggle against British rule, transforming the freedom movement from an elite affair into a mass movement.",
+      "service": "deepinfra",
+      "config": {
+        "voice": "hf_alpha",
+        "model": "hexgrad/Kokoro-82M",
+        "speed": 1.0
+      }
+    },
+    "original_audio": "for-the-first-time-millions-of-ordinary-indians-c58fbca7.mp3",
+    "final_audio": "for-the-first-time-millions-of-ordinary-indians-c58fbca7.mp3"
+  },
+  {
+    "input_text": "Government employees resigned from their posts, and people began boycotting British goods, especially textiles.",
+    "input_data": {
+      "input_text": "Government employees resigned from their posts, and people began boycotting British goods, especially textiles.",
+      "service": "deepinfra",
+      "config": {
+        "voice": "hf_alpha",
+        "model": "hexgrad/Kokoro-82M",
+        "speed": 1.0
+      }
+    },
+    "original_audio": "government-employees-resigned-from-their-posts-and-afe2542c.mp3",
+    "final_audio": "government-employees-resigned-from-their-posts-and-afe2542c.mp3"
+  },
+  {
+    "input_text": "The movement established Gandhi as the undisputed leader of Indian nationalism and demonstrated the power of non-violent resistance.",
+    "input_data": {
+      "input_text": "The movement established Gandhi as the undisputed leader of Indian nationalism and demonstrated the power of non-violent resistance.",
+      "service": "deepinfra",
+      "config": {
+        "voice": "hf_alpha",
+        "model": "hexgrad/Kokoro-82M",
+        "speed": 1.0
+      }
+    },
+    "original_audio": "the-movement-established-gandhi-as-the-undisputed-a15dbff8.mp3",
+    "final_audio": "the-movement-established-gandhi-as-the-undisputed-a15dbff8.mp3"
+  },
+  {
+    "input_text": "The movement saw massive bonfires of foreign cloth, and Indians embraced khadi or hand-spun cloth as a symbol of self-reliance and resistance.",
+    "input_data": {
+      "input_text": "The movement saw massive bonfires of foreign cloth, and Indians embraced khadi or hand-spun cloth as a symbol of self-reliance and resistance.",
+      "service": "deepinfra",
+      "config": {
+        "voice": "hf_alpha",
+        "model": "hexgrad/Kokoro-82M",
+        "speed": 1.0
+      }
+    },
+    "original_audio": "the-movement-saw-massive-bonfires-of-foreign-cloth-f794364b.mp3",
+    "final_audio": "the-movement-saw-massive-bonfires-of-foreign-cloth-f794364b.mp3"
+  },
+  {
+    "input_text": "The movement also gained support from various communities - Muslims joined due to the Khilafat issue, while peasants and workers participated to protest against economic exploitation.",
+    "input_data": {
+      "input_text": "The movement also gained support from various communities - Muslims joined due to the Khilafat issue, while peasants and workers participated to protest against economic exploitation.",
+      "service": "deepinfra",
+      "config": {
+        "voice": "hf_alpha",
+        "model": "hexgrad/Kokoro-82M",
+        "speed": 1.0
+      }
+    },
+    "original_audio": "the-movement-also-gained-support-from-various-b7b40901.mp3",
+    "final_audio": "the-movement-also-gained-support-from-various-b7b40901.mp3"
+  },
+  {
+    "input_text": "It also led to the emergence of new leaders and the spread of nationalist ideas to villages and towns across India.",
+    "input_data": {
+      "input_text": "It also led to the emergence of new leaders and the spread of nationalist ideas to villages and towns across India.",
+      "service": "deepinfra",
+      "config": {
+        "voice": "hf_alpha",
+        "model": "hexgrad/Kokoro-82M",
+        "speed": 1.0
+      }
+    },
+    "original_audio": "it-also-led-to-the-emergence-of-new-leaders-and-6d29b6c3.mp3",
+    "final_audio": "it-also-led-to-the-emergence-of-new-leaders-and-6d29b6c3.mp3"
+  },
+  {
+    "input_text": "The economic boycott of British goods gave a significant boost to Indian industries, particularly textiles.",
+    "input_data": {
+      "input_text": "The economic boycott of British goods gave a significant boost to Indian industries, particularly textiles.",
+      "service": "deepinfra",
+      "config": {
+        "voice": "hf_alpha",
+        "model": "hexgrad/Kokoro-82M",
+        "speed": 1.0
+      }
+    },
+    "original_audio": "the-economic-boycott-of-british-goods-gave-a-03b45954.mp3",
+    "final_audio": "the-economic-boycott-of-british-goods-gave-a-03b45954.mp3"
+  },
+  {
+    "input_text": "The Indian National Congress, under Gandhi's leadership, became a mass organization for the first time.",
+    "input_data": {
+      "input_text": "The Indian National Congress, under Gandhi's leadership, became a mass organization for the first time.",
+      "service": "deepinfra",
+      "config": {
+        "voice": "hf_alpha",
+        "model": "hexgrad/Kokoro-82M",
+        "speed": 1.0
+      }
+    },
+    "original_audio": "the-indian-national-congress-under-gandhi-s-87da1e41.mp3",
+    "final_audio": "the-indian-national-congress-under-gandhi-s-87da1e41.mp3"
+  },
+  {
+    "input_text": "Perhaps most importantly, the movement shattered the myth of British invincibility and showed that colonial rule could be challenged through organized, peaceful resistance.",
+    "input_data": {
+      "input_text": "Perhaps most importantly, the movement shattered the myth of British invincibility and showed that colonial rule could be challenged through organized, peaceful resistance.",
+      "service": "deepinfra",
+      "config": {
+        "voice": "hf_alpha",
+        "model": "hexgrad/Kokoro-82M",
+        "speed": 1.0
+      }
+    },
+    "original_audio": "perhaps-most-importantly-the-movement-shattered-1ed0a40c.mp3",
+    "final_audio": "perhaps-most-importantly-the-movement-shattered-1ed0a40c.mp3"
+  },
+  {
+    "input_text": "The strategies and methods developed during this movement would be refined and used in subsequent struggles, ultimately leading to India's independence in 1947.",
+    "input_data": {
+      "input_text": "The strategies and methods developed during this movement would be refined and used in subsequent struggles, ultimately leading to India's independence in 1947.",
+      "service": "deepinfra",
+      "config": {
+        "voice": "hf_alpha",
+        "model": "hexgrad/Kokoro-82M",
+        "speed": 1.0
+      }
+    },
+    "original_audio": "the-strategies-and-methods-developed-during-this-42da984b.mp3",
+    "final_audio": "the-strategies-and-methods-developed-during-this-42da984b.mp3"
+  },
+  {
+    "input_text": "After World War I ended in 1918, India was seething with discontent.",
+    "input_data": {
+      "input_text": "After World War I ended in 1918, India was seething with discontent.",
+      "service": "deepinfra",
+      "config": {
+        "voice": "hf_alpha",
+        "model": "hexgrad/Kokoro-82M",
+        "speed": 1.0
+      }
+    },
+    "original_audio": "after-world-war-i-ended-in-1918-india-was-seething-3e52bf15.mp3",
+    "final_audio": "after-world-war-i-ended-in-1918-india-was-seething-3e52bf15.mp3"
+  },
+  {
+    "input_text": "The British had promised self-governance in return for India's support during the war, but these promises remained unfulfilled.",
+    "input_data": {
+      "input_text": "The British had promised self-governance in return for India's support during the war, but these promises remained unfulfilled.",
+      "service": "deepinfra",
+      "config": {
+        "voice": "hf_alpha",
+        "model": "hexgrad/Kokoro-82M",
+        "speed": 1.0
+      }
+    },
+    "original_audio": "the-british-had-promised-self-governance-in-return-21b8da2b.mp3",
+    "final_audio": "the-british-had-promised-self-governance-in-return-21b8da2b.mp3"
+  },
+  {
+    "input_text": "The economic burden of the war had devastated India's economy, leading to widespread poverty and unemployment.",
+    "input_data": {
+      "input_text": "The economic burden of the war had devastated India's economy, leading to widespread poverty and unemployment.",
+      "service": "deepinfra",
+      "config": {
+        "voice": "hf_alpha",
+        "model": "hexgrad/Kokoro-82M",
+        "speed": 1.0
+      }
+    },
+    "original_audio": "the-economic-burden-of-the-war-had-devastated-25b6593d.mp3",
+    "final_audio": "the-economic-burden-of-the-war-had-devastated-25b6593d.mp3"
+  },
+  {
+    "input_text": "Adding fuel to the fire were two major incidents: the Rowlatt Act of 1919, which gave the British government sweeping powers to arrest and detain Indians without trial,",
+    "input_data": {
+      "input_text": "Adding fuel to the fire were two major incidents: the Rowlatt Act of 1919, which gave the British government sweeping powers to arrest and detain Indians without trial,",
+      "service": "deepinfra",
+      "config": {
+        "voice": "hf_alpha",
+        "model": "hexgrad/Kokoro-82M",
+        "speed": 1.0
+      }
+    },
+    "original_audio": "adding-fuel-to-the-fire-were-two-major-incidents-e28a6384.mp3",
+    "final_audio": "adding-fuel-to-the-fire-were-two-major-incidents-e28a6384.mp3"
+  },
+  {
+    "input_text": "and the horrific Jallianwala Bagh massacre in Amritsar, where British troops fired on unarmed civilians, killing hundreds.",
+    "input_data": {
+      "input_text": "and the horrific Jallianwala Bagh massacre in Amritsar, where British troops fired on unarmed civilians, killing hundreds.",
+      "service": "deepinfra",
+      "config": {
+        "voice": "hf_alpha",
+        "model": "hexgrad/Kokoro-82M",
+        "speed": 1.0
+      }
+    },
+    "original_audio": "and-the-horrific-jallianwala-bagh-massacre-in-34d4f9c2.mp3",
+    "final_audio": "and-the-horrific-jallianwala-bagh-massacre-in-34d4f9c2.mp3"
+  },
+  {
+    "input_text": "These events shattered Indian faith in British justice and created the perfect conditions for a mass movement against colonial rule.",
+    "input_data": {
+      "input_text": "These events shattered Indian faith in British justice and created the perfect conditions for a mass movement against colonial rule.",
+      "service": "deepinfra",
+      "config": {
+        "voice": "hf_alpha",
+        "model": "hexgrad/Kokoro-82M",
+        "speed": 1.0
+      }
+    },
+    "original_audio": "these-events-shattered-indian-faith-in-british-94dfd0ca.mp3",
+    "final_audio": "these-events-shattered-indian-faith-in-british-94dfd0ca.mp3"
+  },
+  {
+    "input_text": "By 1922, the movement had gained tremendous momentum, but it faced a critical test.",
+    "input_data": {
+      "input_text": "By 1922, the movement had gained tremendous momentum, but it faced a critical test.",
+      "service": "deepinfra",
+      "config": {
+        "voice": "hf_alpha",
+        "model": "hexgrad/Kokoro-82M",
+        "speed": 1.0
+      }
+    },
+    "original_audio": "by-1922-the-movement-had-gained-tremendous-be57fbef.mp3",
+    "final_audio": "by-1922-the-movement-had-gained-tremendous-be57fbef.mp3"
+  },
+  {
+    "input_text": "On February 5, 1922, in the small town of Chauri Chaura in Uttar Pradesh, a group of protesters clashed with police.",
+    "input_data": {
+      "input_text": "On February 5, 1922, in the small town of Chauri Chaura in Uttar Pradesh, a group of protesters clashed with police.",
+      "service": "deepinfra",
+      "config": {
+        "voice": "hf_alpha",
+        "model": "hexgrad/Kokoro-82M",
+        "speed": 1.0
+      }
+    },
+    "original_audio": "on-february-5-1922-in-the-small-town-of-chauri-1315b8dd.mp3",
+    "final_audio": "on-february-5-1922-in-the-small-town-of-chauri-1315b8dd.mp3"
+  },
+  {
+    "input_text": "When the police opened fire, the angry crowd retaliated by setting fire to the police station, killing 22 policemen inside.",
+    "input_data": {
+      "input_text": "When the police opened fire, the angry crowd retaliated by setting fire to the police station, killing 22 policemen inside.",
+      "service": "deepinfra",
+      "config": {
+        "voice": "hf_alpha",
+        "model": "hexgrad/Kokoro-82M",
+        "speed": 1.0
+      }
+    },
+    "original_audio": "when-the-police-opened-fire-the-angry-crowd-f01d8d3e.mp3",
+    "final_audio": "when-the-police-opened-fire-the-angry-crowd-f01d8d3e.mp3"
+  },
+  {
+    "input_text": "This incident of violence deeply troubled Gandhi, who believed that the movement had lost its non-violent character.",
+    "input_data": {
+      "input_text": "This incident of violence deeply troubled Gandhi, who believed that the movement had lost its non-violent character.",
+      "service": "deepinfra",
+      "config": {
+        "voice": "hf_alpha",
+        "model": "hexgrad/Kokoro-82M",
+        "speed": 1.0
+      }
+    },
+    "original_audio": "this-incident-of-violence-deeply-troubled-gandhi-c43a2e9d.mp3",
+    "final_audio": "this-incident-of-violence-deeply-troubled-gandhi-c43a2e9d.mp3"
+  },
+  {
+    "input_text": "Despite strong opposition from other leaders like Motilal Nehru and C.R. Das, who argued that the movement was on the verge of success, Gandhi made the controversial decision to call off the entire movement.",
+    "input_data": {
+      "input_text": "Despite strong opposition from other leaders like Motilal Nehru and C.R. Das, who argued that the movement was on the verge of success, Gandhi made the controversial decision to call off the entire movement.",
+      "service": "deepinfra",
+      "config": {
+        "voice": "hf_alpha",
+        "model": "hexgrad/Kokoro-82M",
+        "speed": 1.0
+      }
+    },
+    "original_audio": "despite-strong-opposition-from-other-leaders-like-f6f4a1c0.mp3",
+    "final_audio": "despite-strong-opposition-from-other-leaders-like-f6f4a1c0.mp3"
+  },
+  {
+    "input_text": "He believed that a movement based on violence, even if successful, would not lead to the kind of free India he envisioned.",
+    "input_data": {
+      "input_text": "He believed that a movement based on violence, even if successful, would not lead to the kind of free India he envisioned.",
+      "service": "deepinfra",
+      "config": {
+        "voice": "hf_alpha",
+        "model": "hexgrad/Kokoro-82M",
+        "speed": 1.0
+      }
+    },
+    "original_audio": "he-believed-that-a-movement-based-on-violence-even-9b4b022e.mp3",
+    "final_audio": "he-believed-that-a-movement-based-on-violence-even-9b4b022e.mp3"
+  }
+]

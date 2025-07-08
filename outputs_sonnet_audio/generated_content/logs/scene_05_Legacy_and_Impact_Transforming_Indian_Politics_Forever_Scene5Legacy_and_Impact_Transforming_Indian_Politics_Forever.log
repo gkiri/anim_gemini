@@ -1,0 +1,44 @@
+{"levelname": "INFO", "module": "logger_utils", "message": "Log file will be saved in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Automatically converted /root/manim_gemini/anim_gemini/outputs/generated_content/voiceovers/although-the-non-cooperation-movement-was-called-d009adf7.mp3 to .wav"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 0 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 1 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Automatically converted /root/manim_gemini/anim_gemini/outputs/generated_content/voiceovers/for-the-first-time-millions-of-ordinary-indians-c58fbca7.mp3 to .wav"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 2 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 3 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 4 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 5 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 6 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Automatically converted /root/manim_gemini/anim_gemini/outputs/generated_content/voiceovers/the-movement-established-gandhi-as-the-undisputed-a15dbff8.mp3 to .wav"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 7 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 8 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 9 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Automatically converted /root/manim_gemini/anim_gemini/outputs/generated_content/voiceovers/it-also-led-to-the-emergence-of-new-leaders-and-6d29b6c3.mp3 to .wav"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 10 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 11 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 12 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 13 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 14 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Automatically converted /root/manim_gemini/anim_gemini/outputs/generated_content/voiceovers/the-economic-boycott-of-british-goods-gave-a-03b45954.mp3 to .wav"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 15 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 16 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 17 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 18 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 19 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Automatically converted /root/manim_gemini/anim_gemini/outputs/generated_content/voiceovers/perhaps-most-importantly-the-movement-shattered-1ed0a40c.mp3 to .wav"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 20 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 21 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 22 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 23 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 24 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Automatically converted /root/manim_gemini/anim_gemini/outputs/generated_content/voiceovers/the-strategies-and-methods-developed-during-this-42da984b.mp3 to .wav"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 25 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 26 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 27 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 28 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 29 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Animation 30 : Partial movie file written in <>"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Combining to Movie file."}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "\nFile ready at <>\n"}
+{"levelname": "INFO", "module": "scene_file_writer", "message": "Subcaption file has been written as /root/manim_gemini/anim_gemini/outputs/generated_content/videos/scene_05_Legacy_and_Impact_Transforming_Indian_Politics_Forever/480p15/Scene5Legacy_and_Impact_Transforming_Indian_Politics_Forever.srt"}
+{"levelname": "INFO", "module": "scene", "message": "Rendered Scene5Legacy_and_Impact_Transforming_Indian_Politics_Forever\nPlayed 31 animations"}
+{"levelname": "INFO", "module": "file_ops", "message": "Previewed File at: '/root/manim_gemini/anim_gemini/outputs/generated_content/videos/scene_05_Legacy_and_Impact_Transforming_Indian_Politics_Forever/480p15/Scene5Legacy_and_Impact_Transforming_Indian_Politics_Forever.mp4'"}

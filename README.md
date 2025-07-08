@@ -36,3 +36,9 @@ Run unittests using:
 ```bash
 python -m unittest discover -s unittests -p "test_*.py"
 ``` 
+
+
+Note:/root/manim_gemini/anim_gemini/project_drishti/openai.py
+
+copy to where manim-voiceover is installed
+/root/miniconda3/envs/manim_gemini/lib/python3.12/site-packages/manim_voiceover/services/openai.py
