@@ -22,6 +22,9 @@ class VideoAnalyzer:
         #self.model = genai.GenerativeModel('gemini-2.5-flash-lite-preview-06-17')
         self.model = genai.GenerativeModel('gemini-2.5-flash')
         self.prompt_template = self._load_prompt_template()
+        # Added attributes to track timing of compression and analysis stages per call
+        self.last_compress_time: float = 0.0
+        self.last_analysis_time: float = 0.0
 
     def _load_prompt_template(self) -> str:
         try:
@@ -70,11 +73,18 @@ class VideoAnalyzer:
 
     def analyze_video(self, video_path: str, scene_description: str) -> bool:
         logger.info(f"Starting analysis for video: {video_path}")
+        start_time = time.perf_counter()
         compressed_path = self._compress_video(video_path)
+        # Capture compression duration
+        self.last_compress_time = time.perf_counter() - start_time
+
         if not compressed_path:
             # Error is already logged by _compress_video
+            # No analysis performed since compression failed
+            self.last_analysis_time = 0.0
             return False
 
+        analysis_start = time.perf_counter()
         video_file = None
         try:
             logger.info(f"Uploading compressed video to Gemini: {compressed_path}")
@@ -87,6 +97,7 @@ class VideoAnalyzer:
 
             if video_file.state.name == "FAILED":
                 logger.error("Gemini video processing failed.")
+                self.last_analysis_time = time.perf_counter() - analysis_start
                 return False
 
             logger.info("Video uploaded. Generating content with Gemini.")
@@ -113,6 +124,7 @@ class VideoAnalyzer:
                 lines = result_text.strip().split('\n')
                 if len(lines) < 2:
                     logger.error(f"Unexpected response format - expecting 2 lines but got {len(lines)}: '{result_text}'")
+                    self.last_analysis_time = time.perf_counter() - analysis_start
                     return False
 
                 # Take the last two lines to be robust against prepended text
@@ -124,6 +136,7 @@ class VideoAnalyzer:
 
                 if not overlap_line.startswith(overlap_prefix) or not boundary_line.startswith(boundary_prefix):
                     logger.error(f"Unexpected response format - missing prefixes: '{result_text}'")
+                    self.last_analysis_time = time.perf_counter() - analysis_start
                     return False
 
                 overlap_severity = overlap_line.replace(overlap_prefix, "").strip()
@@ -140,13 +153,17 @@ class VideoAnalyzer:
                 if not is_boundary_ok:
                     logger.warning(f"Video failed due to BOUNDARY severity: {boundary_severity}")
 
+                # Capture total analysis (upload + Gemini response) duration
+                self.last_analysis_time = time.perf_counter() - analysis_start
                 return is_overlap_ok and is_boundary_ok
             except Exception as e:
                 logger.error(f"Error parsing Gemini response: '{result_text}'. Error: {e}")
+                self.last_analysis_time = time.perf_counter() - analysis_start
                 return False
 
         except Exception as e:
             logger.error(f"An error occurred during Gemini video analysis: {e}")
+            self.last_analysis_time = time.perf_counter() - analysis_start
             return False
         finally:
             # Cleanup the uploaded file on Gemini servers
@@ -198,8 +215,13 @@ class VideoAnalyzer:
             report_message = "Video analysis failed and will be retried."
         
         logger.info(report_message) # Also log it here for clarity
-        
-        return is_good, report_message
+        # Return timing details as a dict for downstream latency dashboard
+        timing_info = {
+            "compress_time": getattr(self, "last_compress_time", 0.0),
+            "analysis_time": getattr(self, "last_analysis_time", 0.0)
+        }
+
+        return is_good, report_message, timing_info
 
 if __name__ == '__main__':
     # This is a placeholder for a test.

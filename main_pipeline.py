@@ -9,8 +9,9 @@ This script orchestrates the entire process:
 
 import logging
 import os
-import json # For pretty printing outputs if needed
+import json  # For pretty printing outputs if needed
 import asyncio
+import time  # NEW: For timing measurements
 from functools import partial
 
 from project_drishti.didactic_scripter import DidacticScripter
@@ -53,6 +54,7 @@ def fix_manim_script_for_scene_wrapper(
     return script_path, manim_class_name, original_scene_data
 
 async def render_scene_with_retries(
+    *,  # enforce keyword usage for new arg backwards compatibility
     initial_script_path: str,
     initial_manim_class_name: str,
     original_scene_data: dict,
@@ -62,6 +64,7 @@ async def render_scene_with_retries(
     loop: asyncio.AbstractEventLoop,
     topic_title_str: str,
     metrics_tracker: dict,
+    initial_script_gen_time: float = 0.0,
     max_retries: int = MAX_RENDER_ATTEMPTS
 ) -> str | None:
     current_script_path = initial_script_path
@@ -74,10 +77,27 @@ async def render_scene_with_retries(
         metrics_tracker[scene_title] = {
             "script_generation_attempts": 0,
             "video_analysis_attempts": 0,
-            "status": "Pending"
+            "status": "Pending",
+            "attempt_details": []  # NEW: hold per-attempt timing metrics
         }
     
     for attempt in range(max_retries):
+        # --- Per-attempt timing structure ---
+        attempt_metrics = {
+            "attempt_number": attempt + 1,
+            "script_gen_time": 0.0,
+            "render_time": 0.0,
+            "compress_time": 0.0,
+            "analysis_time": 0.0,
+            "total_time": 0.0,
+            "status": "Pending",
+        }
+
+        # Seed with any script generation time that happened prior to this attempt (e.g., initial generation or a regeneration done at the end of the previous loop)
+        if initial_script_gen_time > 0:
+            attempt_metrics["script_gen_time"] = initial_script_gen_time
+            # Reset for subsequent attempts so it isn't double-counted
+            initial_script_gen_time = 0.0
         logger.info(
             f"Processing attempt {attempt + 1}/{max_retries} for scene '{scene_title}'."
         )
@@ -88,6 +108,7 @@ async def render_scene_with_retries(
             logger.warning(f"Script not found for '{scene_title}'. Attempting to generate.")
             try:
                 # This is a blocking call, run in executor
+                sg_start = time.perf_counter()
                 gen_script_path, gen_manim_class_name, _ = await loop.run_in_executor(
                     None,
                     partial(
@@ -97,13 +118,22 @@ async def render_scene_with_retries(
                         topic_title_str
                     )
                 )
+                attempt_metrics["script_gen_time"] += time.perf_counter() - sg_start
                 if not (gen_script_path and gen_manim_class_name):
                     raise ValueError("Script generation failed to return a valid path or class name.")
                 current_script_path, current_manim_class_name = gen_script_path, gen_manim_class_name
                 logger.info(f"Successfully generated script: {current_script_path}")
             except Exception as e:
                 logger.error(f"FATAL: Could not generate script for '{scene_title}' on attempt {attempt + 1}: {e}")
-                continue # Move to the next attempt
+                attempt_metrics["status"] = "Script Gen Failed"
+                attempt_metrics["total_time"] = (
+                    attempt_metrics["script_gen_time"]
+                    + attempt_metrics["render_time"]
+                    + attempt_metrics["compress_time"]
+                    + attempt_metrics["analysis_time"]
+                )
+                metrics_tracker[scene_title]["attempt_details"].append(attempt_metrics)
+                continue  # Move to the next attempt
 
         # If script is still missing, we can't proceed with this attempt.
         if not current_script_path or not os.path.exists(current_script_path):
@@ -112,12 +142,14 @@ async def render_scene_with_retries(
 
         # Try to render the video
         logger.info(f"Rendering '{scene_title}' from {current_script_path}...")
+        rd_start = time.perf_counter()
         render_success, video_path, render_error = await loop.run_in_executor(
             None,
             renderer_instance.render_scene,
             current_script_path,
             current_manim_class_name
         )
+        attempt_metrics["render_time"] = time.perf_counter() - rd_start
 
         # If rendering is successful, analyze the video
         if render_success:
@@ -125,16 +157,27 @@ async def render_scene_with_retries(
             logger.info(f"Analyzing video quality for '{scene_title}'...")
             metrics_tracker[scene_title]["video_analysis_attempts"] += 1
 
-            analysis_passed, analysis_reason = await loop.run_in_executor(
+            analysis_passed, analysis_reason, timing_info = await loop.run_in_executor(
                 None,
                 video_analyzer_instance.analyze_and_report,
                 video_path,
                 scene_narration,
             )
 
+            attempt_metrics["compress_time"] = timing_info.get("compress_time", 0.0)
+            attempt_metrics["analysis_time"] = timing_info.get("analysis_time", 0.0)
+
             if analysis_passed:
                 logger.info(f"SUCCESS: Video for '{scene_title}' passed quality analysis. Reason: {analysis_reason}")
                 metrics_tracker[scene_title]["status"] = "Success"
+                attempt_metrics["status"] = "Success"
+                attempt_metrics["total_time"] = (
+                    attempt_metrics["script_gen_time"]
+                    + attempt_metrics["render_time"]
+                    + attempt_metrics["compress_time"]
+                    + attempt_metrics["analysis_time"]
+                )
+                metrics_tracker[scene_title]["attempt_details"].append(attempt_metrics)
                 # Clean up intermediate script if a fix had created a new one
                 if initial_script_path and current_script_path != initial_script_path and os.path.exists(initial_script_path):
                     os.remove(initial_script_path)
@@ -143,20 +186,30 @@ async def render_scene_with_retries(
                 logger.warning(f"Video for '{scene_title}' FAILED quality analysis. Reason: {analysis_reason}")
                 render_success = False # Mark as failed to trigger recovery
                 render_error = analysis_reason # Use analysis reason as the error for the fix prompt
+                attempt_metrics["status"] = "Analysis Failed"
 
         # If rendering or analysis failed
         if not render_success:
             logger.error(f"Failed to produce a good quality video for '{scene_title}' on attempt {attempt + 1}. Error: {render_error}")
 
+            attempt_metrics["total_time"] = (
+                attempt_metrics["script_gen_time"]
+                + attempt_metrics["render_time"]
+                + attempt_metrics["compress_time"]
+                + attempt_metrics["analysis_time"]
+            )
+            metrics_tracker[scene_title]["attempt_details"].append(attempt_metrics)
+
             if attempt >= max_retries - 1:
                 logger.critical(f"Max retries reached for '{scene_title}'. Moving on.")
-                break # Exit loop
+                break  # Exit loop
 
             # Attempt to regenerate the script for the next iteration
             logger.info(f"Attempting to regenerate script for '{scene_title}'...")
             try:
                 # We are choosing to regenerate from scratch instead of fixing
                 # This is a blocking call, run in executor
+                sg_start_retry = time.perf_counter()
                 gen_script_path, gen_manim_class_name, _ = await loop.run_in_executor(
                     None,
                     partial(
@@ -166,6 +219,9 @@ async def render_scene_with_retries(
                         topic_title_str
                     )
                 )
+                attempt_metrics_retry_extra = time.perf_counter() - sg_start_retry
+                # This generation is for the NEXT attempt, so we'll carry it forward in the next loop iteration via initial_script_gen_time update
+                initial_script_gen_time = attempt_metrics_retry_extra
 
                 if gen_script_path and gen_manim_class_name:
                     logger.info(f"Script for '{scene_title}' was regenerated. New script: {gen_script_path}")
@@ -182,6 +238,15 @@ async def render_scene_with_retries(
 
     logger.error(f"All {max_retries} attempts failed for scene '{scene_title}'.")
     metrics_tracker[scene_title]["status"] = "Failed"
+    # Ensure last attempt metrics captured if loop exits due to max retries
+    if attempt_metrics and attempt_metrics not in metrics_tracker[scene_title]["attempt_details"]:
+        attempt_metrics["total_time"] = (
+            attempt_metrics["script_gen_time"]
+            + attempt_metrics["render_time"]
+            + attempt_metrics["compress_time"]
+            + attempt_metrics["analysis_time"]
+        )
+        metrics_tracker[scene_title]["attempt_details"].append(attempt_metrics)
     return None
 
 def print_metrics_table(metrics: dict):
@@ -227,6 +292,7 @@ async def process_scene(
         logger.info(f"Starting processing for scene: {scene_title}")
 
         # Initial script generation
+        sg_start_initial = time.perf_counter()
         script_path, manim_class_name, _ = await loop.run_in_executor(
             None,
             partial(
@@ -236,6 +302,7 @@ async def process_scene(
                 topic_title_str
             )
         )
+        initial_script_gen_time = time.perf_counter() - sg_start_initial
 
         if not (script_path and manim_class_name):
             logger.error(f"Could not generate initial script for scene: {scene_title}. It will not be rendered.")
@@ -252,7 +319,8 @@ async def process_scene(
             video_analyzer_instance=video_analyzer,
             loop=loop,
             topic_title_str=topic_title_str,
-            metrics_tracker=metrics_tracker
+            metrics_tracker=metrics_tracker,
+            initial_script_gen_time=initial_script_gen_time
         )
         return video_path
 
@@ -276,11 +344,13 @@ async def run_pipeline(topic: str, num_scenes_override: int | None = None):
     # --- Stage 1: Didactic Scripter --- 
     logger.info("--- Stage 1: Generating Didactic Script ---")
     scripter = DidacticScripter()
+    ds_start = time.perf_counter()
     didactic_script_args = {"topic": topic}
     if num_scenes_override is not None:
         didactic_script_args["num_scenes"] = num_scenes_override
     
     didactic_script = scripter.generate_script(**didactic_script_args)
+    didactic_script_time = time.perf_counter() - ds_start
     if not didactic_script:
         logger.error("Failed to generate the didactic script. Cannot proceed.")
         return
@@ -307,7 +377,8 @@ async def run_pipeline(topic: str, num_scenes_override: int | None = None):
         scene_metrics[scene_title] = {
             "script_generation_attempts": 0,
             "video_analysis_attempts": 0,
-            "status": "Pending"
+            "status": "Pending",
+            "attempt_details": []
         }
 
     # Create tasks for each scene to be processed concurrently
@@ -342,6 +413,59 @@ async def run_pipeline(topic: str, num_scenes_override: int | None = None):
             logger.info(f" - {path}")
     
     print_metrics_table(scene_metrics)
+
+    # ---- New Latency Dashboard ----
+    print_latency_table(scene_metrics, didactic_script_time)
+
+
+def print_latency_table(metrics: dict, didactic_time: float):
+    """Prints a detailed latency table for each attempt across all scenes."""
+    logger.info("--- Latency Metrics ---")
+    logger.info(f"Didactic Script Generation Time: {didactic_time:.2f} seconds")
+
+    headers = [
+        "Scene Title",
+        "Attempt #",
+        "ScriptGen(s)",
+        "Render(s)",
+        "Compress(s)",
+        "Analysis(s)",
+        "Total(s)",
+        "Status",
+    ]
+
+    # Determine dynamic column widths
+    scene_name_width = max(max((len(k) for k in metrics.keys()), default=0), len(headers[0])) + 2
+    col_widths = [
+        scene_name_width,
+        10,
+        14,
+        10,
+        12,
+        13,
+        10,
+        10,
+    ]
+
+    header_row = " | ".join(h.ljust(w) for h, w in zip(headers, col_widths))
+    logger.info(header_row)
+    logger.info("-" * len(header_row))
+
+    for scene_title, data in metrics.items():
+        for attempt in data.get("attempt_details", []):
+            row_data = [
+                scene_title,
+                str(attempt.get("attempt_number", "")),
+                f"{attempt.get('script_gen_time', 0.0):.2f}",
+                f"{attempt.get('render_time', 0.0):.2f}",
+                f"{attempt.get('compress_time', 0.0):.2f}",
+                f"{attempt.get('analysis_time', 0.0):.2f}",
+                f"{attempt.get('total_time', 0.0):.2f}",
+                attempt.get("status", ""),
+            ]
+            data_row = " | ".join(d.ljust(w) for d, w in zip(row_data, col_widths))
+            logger.info(data_row)
+    logger.info("-" * len(header_row))
 
 async def main():
     """
